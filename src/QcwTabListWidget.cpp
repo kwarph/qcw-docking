@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Cheng Lei <kwarph@users.noreply.github.com>
 // SPDX-License-Identifier: BSD-3-Clause
 
-#include "QcwFilterableListWidget.h"
+#include "QcwTabListWidget.h"
 
 #include <QLineEdit>
 #include <QListView>
@@ -43,10 +43,10 @@ public:
 
 } // namespace
 
-class QcwFilterableListWidgetPrivate
+class QcwTabListWidgetPrivate
 {
 public:
-    explicit QcwFilterableListWidgetPrivate(QcwFilterableListWidget* interface) :
+    explicit QcwTabListWidgetPrivate(QcwTabListWidget* interface) :
         owner { interface }
     {
     }
@@ -83,7 +83,7 @@ public:
     void retranslateUi();
 
 public:
-    QcwFilterableListWidget* owner;
+    QcwTabListWidget* owner;
     QLineEdit* filterEdit { nullptr };
     QFrame* separator { nullptr };
     QListView* view { nullptr };
@@ -103,8 +103,8 @@ static constexpr int MaxVisibleRows = 20;
 /// Size suggested for a list that has no items to measure yet.
 static constexpr int EmptySizeHint = 200;
 
-QcwFilterableListWidget::QcwFilterableListWidget(bool filterBarOnTop, QWidget* parent) :
-    QFrame { parent }, impl { new QcwFilterableListWidgetPrivate { this } }
+QcwTabListWidget::QcwTabListWidget(bool filterBarOnTop, QWidget* parent) :
+    QFrame { parent }, impl { new QcwTabListWidgetPrivate { this } }
 {
     auto verticalLayout = new QVBoxLayout(this);
     verticalLayout->setContentsMargins(Spacing, Spacing, Spacing, Spacing);
@@ -186,7 +186,7 @@ QcwFilterableListWidget::QcwFilterableListWidget(bool filterBarOnTop, QWidget* p
     impl->retranslateUi();
 }
 
-QStandardItem* QcwFilterableListWidget::addItem(const QString& text, const QIcon& icon, const QFont& font)
+QStandardItem* QcwTabListWidget::addItem(const QString& text, const QIcon& icon, const QFont& font)
 {
     auto item = new QStandardItem(icon, text);
     item->setData(font, Qt::FontRole);
@@ -205,18 +205,18 @@ QStandardItem* QcwFilterableListWidget::addItem(const QString& text, const QIcon
     return item;
 }
 
-QcwFilterableListWidget::~QcwFilterableListWidget()
+QcwTabListWidget::~QcwTabListWidget()
 {
     delete impl;
 }
 
-void QcwFilterableListWidget::setFilterBarVisible(bool visible)
+void QcwTabListWidget::setFilterBarVisible(bool visible)
 {
     impl->filterEdit->setVisible(visible);
     impl->separator->setVisible(visible);
 }
 
-void QcwFilterableListWidget::showEvent(QShowEvent* event)
+void QcwTabListWidget::showEvent(QShowEvent* event)
 {
     QFrame::showEvent(event);
 
@@ -226,7 +226,7 @@ void QcwFilterableListWidget::showEvent(QShowEvent* event)
     }
 }
 
-void QcwFilterableListWidget::changeEvent(QEvent* event)
+void QcwTabListWidget::changeEvent(QEvent* event)
 {
     if (event->type() == QEvent::LanguageChange)
     {
@@ -236,7 +236,7 @@ void QcwFilterableListWidget::changeEvent(QEvent* event)
     QFrame::changeEvent(event);
 }
 
-QSize QcwFilterableListWidget::sizeHint() const
+QSize QcwTabListWidget::sizeHint() const
 {
     const int rows = impl->model->rowCount();
     if (impl->longestRow < 0)
@@ -272,9 +272,9 @@ QSize QcwFilterableListWidget::sizeHint() const
     return QSize(width, height);
 }
 
-void QcwFilterableListWidgetPrivate::retranslateUi()
+void QcwTabListWidgetPrivate::retranslateUi()
 {
-    filterEdit->setPlaceholderText(QCoreApplication::translate("QcwFilterableListWidget", "Filter"));
+    filterEdit->setPlaceholderText(QCoreApplication::translate("QcwTabListWidget", "Filter"));
 }
 
 QT_END_NAMESPACE

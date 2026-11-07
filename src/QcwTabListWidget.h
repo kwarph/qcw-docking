@@ -15,10 +15,10 @@ class QModelIndex;
 class QEvent;
 class QShowEvent;
 class QStandardItem;
-class QcwFilterableListWidgetPrivate;
+class QcwTabListWidgetPrivate;
 
 /**
- * @class QcwFilterableListWidget
+ * @class QcwTabListWidget
  * @brief A read-only list of icon/text items with a built-in text filter.
  *
  * @details The widget combines a QLineEdit (the filter bar) and a QListView sharing one
@@ -41,7 +41,7 @@ class QcwFilterableListWidgetPrivate;
  * (QStandardItem::setData()), but the internal model keeps ownership: the caller must not
  * delete the item. The itemSelected signal reports that same pointer.
  */
-class QCWDOCK_EXPORT QcwFilterableListWidget : public QFrame
+class QCWDOCK_EXPORT QcwTabListWidget : public QFrame
 {
     Q_OBJECT
 
@@ -52,10 +52,10 @@ public:
      *                       below. The list always takes the remaining space.
      * @param parent The parent widget.
      */
-    explicit QcwFilterableListWidget(bool filterBarOnTop, QWidget* parent = nullptr);
+    explicit QcwTabListWidget(bool filterBarOnTop, QWidget* parent = nullptr);
 
     /** @brief Destructs the widget, releasing the model and its items. */
-    ~QcwFilterableListWidget() override;
+    ~QcwTabListWidget() override;
 
     /**
      * @brief Appends an item to the list.
@@ -113,9 +113,9 @@ protected:
     void changeEvent(QEvent* event) override;
 
 private:
-    Q_DISABLE_COPY(QcwFilterableListWidget)
+    Q_DISABLE_COPY(QcwTabListWidget)
 
-    QcwFilterableListWidgetPrivate* impl;
+    QcwTabListWidgetPrivate* impl;
 };
 
 QT_END_NAMESPACE

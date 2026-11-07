@@ -3,7 +3,7 @@
 
 #include "QcwTabFolder.h"
 #include "QcwTabPaneManager.h"
-#include "QcwFilterableListWidget.h"
+#include "QcwTabListWidget.h"
 #include "QcwDockSerializeUtils.h"
 #include "QcwTabFolderRenderer.h"
 #include "QcwFloatingFolderMonitor.h"
@@ -2665,7 +2665,7 @@ void QcwTabFolderPrivate::createTabBarButtons()
             }
         }
 
-        auto listWidget = new QcwFilterableListWidget(true, owner);
+        auto listWidget = new QcwTabListWidget(true, owner);
         listWidget->setWindowFlag(Qt::Popup);
         listWidget->setAttribute(Qt::WA_DeleteOnClose);
 
@@ -2683,7 +2683,7 @@ void QcwTabFolderPrivate::createTabBarButtons()
             item->setData(index, Qt::UserRole);
         }
 
-        QObject::connect(listWidget, &QcwFilterableListWidget::itemSelected, [this, listWidget](QStandardItem* item)
+        QObject::connect(listWidget, &QcwTabListWidget::itemSelected, [this, listWidget](QStandardItem* item)
         {
             setCurrentIndex(item->data(Qt::UserRole).toInt());
             listWidget->close();

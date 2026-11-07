@@ -18,7 +18,7 @@ application owns everything above the folder level.
 | `QcwFloatingFolderMonitor` | Tracks folders that float into their own top-level windows |
 | `QcwFastViewToolBar` | The window-edge tool bar a minimized folder turns into |
 | `QcwFastViewStyleSettings` | Process-wide margin/border values the host writes before a fast view opens |
-| `QcwFilterableListWidget` | The list widget used by the tab-list popup, with a filter line |
+| `QcwTabListWidget` | The list widget used by the tab-list popup, with a filter line |
 
 ## Requirements
 

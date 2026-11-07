@@ -17,13 +17,13 @@ target_sources(${TARGET}
         QcwDefaultTabFolderRenderer.cpp
         QcwFastViewStyleSettings.cpp
         QcwFastViewToolBar.cpp
-        QcwFilterableListWidget.cpp
         QcwFloatingFolderMonitor.cpp
         QcwTabFolder.cpp
         QcwTabFolderContainer.cpp
         QcwTabFolderRenderer.cpp
         QcwTabFolderRendererCreators.cpp
         QcwTabFolderSite.cpp
+        QcwTabListWidget.cpp
         QcwTabPaneManager.cpp
 )
 
@@ -38,13 +38,13 @@ target_sources(${TARGET}
             QcwDockSerializeUtils.h
             QcwFastViewStyleSettings.h
             QcwFastViewToolBar.h
-            QcwFilterableListWidget.h
             QcwFloatingFolderMonitor.h
             QcwTabFolder.h
             QcwTabFolderContainer.h
             QcwTabFolderRenderer.h
             QcwTabFolderRendererCreators.h
             QcwTabFolderSite.h
+            QcwTabListWidget.h
             QcwTabPaneManager.h
 )
 
