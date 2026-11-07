@@ -78,7 +78,7 @@ install(EXPORT qcwdockingTargets
 )
 
 configure_package_config_file(
-    "${CMAKE_SOURCE_DIR}/cmake/qcwdockingConfig.cmake.in"
+    "${PROJECT_SOURCE_DIR}/cmake/qcwdockingConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/qcwdockingConfig.cmake"
     INSTALL_DESTINATION "${QCWDOCKING_CMAKE_INSTALL_DIR}"
 )
