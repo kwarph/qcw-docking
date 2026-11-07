@@ -418,7 +418,7 @@ void QcwTabFolderContainer::saveState(QXmlStreamWriter& writer) const
         writer.writeStartElement("folderInfo"); // --> folderInfo begin
         writer.writeAttribute("id", QString::number(folder->property("FolderId").toInt()));
         writer.writeAttribute("allowedDockAreas", QString::number(flags.allowedDockAreas));
-        writer.writeAttribute("emptyFolderAction", QString::number(std::to_underlying(flags.emptyFolderAction)));
+        writer.writeAttribute("emptyFolderAction", QString::number(static_cast<int>(flags.emptyFolderAction)));
 
         folder->saveState(writer);
 

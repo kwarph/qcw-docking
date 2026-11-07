@@ -658,11 +658,11 @@ void QcwTabFolder::saveState(QXmlStreamWriter& writer) const
     writer.writeAttribute("id", QString::number(property("FolderId").toInt()));
     writer.writeAttribute("currentIndex", QString::number(impl->currentIndex));
     writer.writeAttribute("features", QString::number(impl->features));
-    writer.writeAttribute("tabPosition", QString::number(std::to_underlying(impl->tabPosition)));
+    writer.writeAttribute("tabPosition", QString::number(static_cast<int>(impl->tabPosition)));
     writer.writeAttribute("floating", QString("%1").arg(impl->floating));
     writer.writeAttribute("iconSize", QString::number(impl->iconSize));
     writer.writeAttribute("minTextRectWidth", QString::number(impl->minTextRectWidth));
-    writer.writeAttribute("state", QString::number(std::to_underlying(impl->state)));
+    writer.writeAttribute("state", QString::number(static_cast<int>(impl->state)));
 
     auto ba = QcwDockSerializeUtils::serialize(impl->recentIndexes);
     writer.writeAttribute("recentIndexes", ba.toHex(' '));

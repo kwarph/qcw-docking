@@ -106,7 +106,7 @@ the environment properties in `tests/CMakeLists.txt` when adding a test that ent
 
 ## Build and versioning
 
-CMake 3.23+, C++23, Qt 6 Widgets only. `QCWDOCK_BUILD_TESTS`/`QCWDOCK_BUILD_EXAMPLES` default
+CMake 3.23+, C++17, Qt 6.9+ Widgets only. `QCWDOCK_BUILD_TESTS`/`QCWDOCK_BUILD_EXAMPLES` default
 to ON only when the project is top-level, so a host's `add_subdirectory()` builds the library
 alone. `CMakeLists.txt` holds the single version number; a release tag is `v` plus that number.
 Semantic versioning applies to the `QCWDOCK_EXPORT` API, the installed headers and the renderer

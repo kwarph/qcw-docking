@@ -57,11 +57,11 @@ QByteArray folderDocument(const QList<SavedTab>& tabs,
     writer.writeAttribute("id", "17");
     writer.writeAttribute("currentIndex", QString::number(currentIndex));
     writer.writeAttribute("features", QString::number(features.toInt()));
-    writer.writeAttribute("tabPosition", QString::number(std::to_underlying(qcw::TabPosition::Bottom)));
+    writer.writeAttribute("tabPosition", QString::number(static_cast<int>(qcw::TabPosition::Bottom)));
     writer.writeAttribute("floating", "0");
     writer.writeAttribute("iconSize", "24");
     writer.writeAttribute("minTextRectWidth", "40");
-    writer.writeAttribute("state", QString::number(std::to_underlying(qcw::FolderState::Maximized)));
+    writer.writeAttribute("state", QString::number(static_cast<int>(qcw::FolderState::Maximized)));
     writer.writeAttribute("recentIndexes",
                           QString::fromLatin1(hexOf(QcwDockSerializeUtils::serialize(recentIndexes))));
 

@@ -1,6 +1,6 @@
 # qcw-docking
 
-Qt 6 tab-folder docking widgets: tabbed folders, a splitter container that arranges them,
+Qt docking system: tabbed folders, a splitter container that arranges them,
 floating folders, minimized fast views and a pluggable folder renderer. The library depends on
 Qt Widgets only — it does not know about a workbench, perspectives or views, so the host
 application owns everything above the folder level.
@@ -22,8 +22,8 @@ application owns everything above the folder level.
 
 ## Requirements
 
-- C++23 compiler, CMake 3.23+
-- Qt 6 with the Widgets module
+- C++17 compiler, CMake 3.23+
+- Qt 6.9+ with the Widgets module
 
 ## Build
 
