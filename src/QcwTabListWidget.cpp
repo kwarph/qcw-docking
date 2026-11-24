@@ -126,6 +126,7 @@ QcwTabListWidget::QcwTabListWidget(bool filterBarOnTop, QWidget* parent) :
     impl->view->setFrameShadow(QFrame::Plain);
     impl->view->setIconSize(QSize(DockFixedRowHeightItemDelegate::IconSize, DockFixedRowHeightItemDelegate::IconSize));
     impl->view->setItemDelegate(new DockFixedRowHeightItemDelegate { impl->view });
+    impl->view->setContextMenuPolicy(Qt::CustomContextMenu);
 
     if (filterBarOnTop)
     {
@@ -183,17 +184,41 @@ QcwTabListWidget::QcwTabListWidget(bool filterBarOnTop, QWidget* parent) :
         impl->commit(impl->itemAt(index));
     });
 
+    connect(impl->view, &QListView::customContextMenuRequested, this, [this](const QPoint& position)
+    {
+        const QModelIndex index = impl->view->indexAt(position);
+        QStandardItem* item = impl->itemAt(index);
+        if (!item)
+        {
+            return;
+        }
+
+        impl->view->setCurrentIndex(index);
+        emit itemContextMenuRequested(item, impl->view->viewport()->mapToGlobal(position));
+    });
+
     impl->retranslateUi();
 }
 
 QStandardItem* QcwTabListWidget::addItem(const QString& text, const QIcon& icon, const QFont& font)
 {
-    auto item = new QStandardItem(icon, text);
+    return addItem(text, icon, font, false, QColor());
+}
+
+QStandardItem* QcwTabListWidget::addItem(
+    const QString& text, const QIcon& icon, const QFont& font, bool dirty, const QColor& textColor)
+{
+    const QString label = dirty ? QStringLiteral("*%1").arg(text) : text;
+    auto item = new QStandardItem(icon, label);
     item->setData(font, Qt::FontRole);
+    if (textColor.isValid())
+    {
+        item->setData(textColor, Qt::ForegroundRole);
+    }
 
     // Remember the widest row for sizeHint(), measured with the font of this very item:
     // rows are not all drawn in the view font.
-    const int width = QFontMetrics { font }.horizontalAdvance(text);
+    const int width = QFontMetrics { font }.horizontalAdvance(label);
     if (width > impl->maxTextWidth)
     {
         impl->maxTextWidth = width;

@@ -236,6 +236,39 @@ void testCurrentTabSurvivesExtremeNarrowing()
     check(folder.isTabVisible(folder.currentIndex()), "the current tab is the one that remains visible");
 }
 
+// Feature changes must update the tab-bar buttons even when the folder is empty: the
+// visible-folder geometry pass is the only place that applies Minimizable/Maximizable.
+void testFeatureTogglesButtons()
+{
+    std::fprintf(stderr, "--- feature toggles buttons ---\n");
+
+    QcwTabFolder folder;
+    folder.resize(500, 200);
+    folder.show();
+    QApplication::processEvents();
+
+    auto* minimize = folder.findChild<QToolButton*>(QStringLiteral("minButton"));
+    auto* maximize = folder.findChild<QToolButton*>(QStringLiteral("maxButton"));
+    check(minimize && maximize, "the folder has its minimize and maximize buttons");
+    check(minimize->isVisible() && maximize->isVisible(), "default features show both buttons");
+
+    auto features = folder.features();
+    features.setFlag(qcw::Minimizable, false);
+    features.setFlag(qcw::Maximizable, false);
+    folder.setFeatures(features);
+    QApplication::processEvents();
+    check(!minimize->isVisible() && !maximize->isVisible(), "setFeatures hides both buttons on a shown empty folder");
+
+    folder.setFeature(qcw::Minimizable, true);
+    QApplication::processEvents();
+    check(minimize->isVisible() && !maximize->isVisible(), "setFeature shows only the enabled button");
+
+    folder.setFeature(qcw::Maximizable, true);
+    folder.setFeature(qcw::Minimizable, false);
+    QApplication::processEvents();
+    check(!minimize->isVisible() && maximize->isVisible(), "toggling the feature pair keeps each button in sync");
+}
+
 void testShowFullTitle()
 {
     std::fprintf(stderr, "--- show full title ---\n");
@@ -357,6 +390,7 @@ int main(int argc, char** argv)
     testCurrentTabSurvivesExtremeNarrowing();
     testShowFullTitle();
     testTabListButtonCount();
+    testFeatureTogglesButtons();
 
     if (failures == 0)
     {

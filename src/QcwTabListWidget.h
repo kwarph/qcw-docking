@@ -4,8 +4,10 @@
 #pragma once
 
 #include "QcwDockingGlobal.h"
+#include <QColor>
 #include <QFrame>
 #include <QIcon>
+#include <QPoint>
 #include <QString>
 
 QT_BEGIN_NAMESPACE
@@ -68,6 +70,21 @@ public:
     QStandardItem* addItem(const QString& text, const QIcon& icon, const QFont& font);
 
     /**
+     * @brief Appends an item that can show the tab dirty marker and color.
+     * @param text The label shown in the row; a dirty item is prefixed with @c '*'.
+     * @param icon The row icon.
+     * @param font The row font.
+     * @param dirty True to prefix the visible text with @c '*'.
+     * @param textColor The foreground color for the row; invalid leaves the palette color.
+     * @return The new item, owned by the internal model.
+     * @details The tab list uses this to carry the dirty state and the folder renderer's
+     *          dirty text color into the popup. The filter matches the displayed text,
+     *          including the marker.
+     */
+    QStandardItem*
+    addItem(const QString& text, const QIcon& icon, const QFont& font, bool dirty, const QColor& textColor);
+
+    /**
      * @brief Shows or hides the filter bar and its separator.
      * @param visible False turns the widget into a plain list: the rows keep their size and
      *                sizeHint() stops counting the bar.
@@ -96,6 +113,17 @@ signals:
      * @note Nothing is emitted when the filter matches no item.
      */
     void itemSelected(QStandardItem* item);
+
+    /**
+     * @brief Emitted when the user right-clicks an item.
+     * @param item The item under the pointer, owned by the internal model.
+     * @param globalPosition The click position in global coordinates.
+     * @details The widget shows no menu of its own. The owner decides which actions apply
+     *          and can reuse one action list for every surface, for example
+     *          QcwTabFolder::tabMenu() for both the tab bar and this popup. Add, disable or
+     *          hide actions there; the list widget does not copy them.
+     */
+    void itemContextMenuRequested(QStandardItem* item, const QPoint& globalPosition);
 
 protected:
     /**

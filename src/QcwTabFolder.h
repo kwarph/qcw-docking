@@ -608,7 +608,9 @@ public:
      * @return Pointer to the QMenu object.
      * @note The folder owns the menu and rebuilds its entries on every right click,
      *       hiding the ones that do not apply to the tab under the cursor. Add your
-     *       own actions here; they are kept across those updates.
+     *       own actions here; they are kept across those updates. The same menu is shown
+     *       when an item in the tab list popup is right-clicked (the item is made current
+     *       first), so one action list, including disabled entries, serves both surfaces.
      */
     QMenu* tabMenu() const;
 

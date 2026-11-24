@@ -237,6 +237,18 @@ public:
                       const QRect& selectedTabRect,
                       int xPosOfDropIndicator = -1) const;
 
+    /**
+     * @brief Returns the color a tab label would be painted with.
+     * @param tabState The interaction state of the tab.
+     * @param isDirty Whether the tab has unsaved changes.
+     * @details Public read-only view of textColor() so non-painting surfaces, such as the
+     *          tab list popup, can show the same dirty/normal text color as the tab bar.
+     */
+    QColor tabTextColor(TabState tabState, bool isDirty) const
+    {
+        return textColor(tabState, isDirty);
+    }
+
 protected:
     /**
      * @brief Renders the background region of the tab bar.

@@ -18,7 +18,7 @@ application owns everything above the folder level.
 | `QcwFloatingFolderMonitor` | Tracks folders that float into their own top-level windows |
 | `QcwFastViewToolBar` | The window-edge tool bar a minimized folder turns into |
 | `QcwFastViewStyleSettings` | Process-wide margin/border values the host writes before a fast view opens |
-| `QcwTabListWidget` | The list widget used by the tab-list popup, with a filter line |
+| `QcwTabListWidget` | The list widget used by the tab-list popup: filter line, dirty marker/color and an item context-menu signal shared with the folder's tab menu |
 
 ## Requirements
 
@@ -79,7 +79,7 @@ loader; a standalone application that does not is simply English.
 ## Versioning
 
 `CMakeLists.txt` holds the single version number, and a release tag is that number prefixed
-with `v` (`v1.0.0`). Semantic versioning applies to the public API — the `QCWDOCK_EXPORT`
+with `v` (`v1.1.0`). Semantic versioning applies to the public API — the `QCWDOCK_EXPORT`
 classes and functions, the installed headers and the renderer interface. A host that links
 this library through `find_package()` should require the matching major version.
 

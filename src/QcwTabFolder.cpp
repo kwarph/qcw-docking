@@ -397,6 +397,7 @@ public:
     ~QcwTabFolderPrivate();
 
     void createMenu();
+    void showTabContextMenu(const QPoint& globalPosition, int index);
     void createTabBarButtons();
     void retranslateUi();
     void createOverlays();
@@ -2105,29 +2106,35 @@ void QcwTabFolder::setFeatures(qcw::FolderFeatures features)
         }
 
         impl->features = features;
-        impl->determineVisibleTabs();
     }
+
+    // determineVisibleTabs() returns early for an empty folder, so the tab-bar buttons would
+    // keep the visibility they were created with. Compute the tab geometry first: it also
+    // applies Minimizable/Maximizable to the two buttons, whether there are tabs or not.
+    impl->computeTabsGeometry();
+    impl->determineVisibleTabs();
 }
 
 void QcwTabFolder::setFeature(qcw::FolderFeature feature, bool on)
 {
-    if (impl->features.testFlag(feature) != on)
+    const bool changed = impl->features.testFlag(feature) != on;
+    impl->features.setFlag(feature, on);
+
+    if (changed && feature == qcw::ShowFullTitle)
     {
-        impl->features.setFlag(feature, on);
-        if (feature == qcw::ShowFullTitle)
+        for (auto tab : std::as_const(impl->tabs))
         {
-            for (auto tab : std::as_const(impl->tabs))
+            if (tab->visible)
             {
-                if (tab->visible)
-                {
-                    tab->setTextRectWidth(on ? tab->fullTextWidth : impl->minTextRectWidth);
-                }
+                tab->setTextRectWidth(on ? tab->fullTextWidth : impl->minTextRectWidth);
             }
         }
-
-        impl->computeTabsGeometry();
-        impl->determineVisibleTabs();
     }
+
+    // Run the geometry pass even when the flag did not change: the buttons may still be out of
+    // sync after a features list was applied to an empty folder or during state restore.
+    impl->computeTabsGeometry();
+    impl->determineVisibleTabs();
 }
 
 // tab theming
@@ -2513,79 +2520,78 @@ void QcwTabFolderPrivate::createMenu()
             return;
         }
 
-        bool showTabActions = !tabs.empty();
-
-        auto index = indexAt(pos);
+        int index = indexAt(pos);
         if (!isValidIndex(index))
         {
             index = currentIndex;
-            if (!isValidIndex(index))
-            {
-                showTabActions = false;
-            }
         }
 
-        if (showTabActions)
-        {
-            rightClickPosition = pos;
+        rightClickPosition = pos;
+        showTabContextMenu(owner->mapToGlobal(pos), index);
+    });
+}
 
-            int leftClosables = 0;
-            int rightClosables = 0;
-            for (int i = 0; i < tabs.size(); ++i)
+void QcwTabFolderPrivate::showTabContextMenu(const QPoint& globalPosition, int index)
+{
+    const bool showTabActions = isValidIndex(index);
+    if (showTabActions)
+    {
+        int leftClosables = 0;
+        int rightClosables = 0;
+        for (int i = 0; i < tabs.size(); ++i)
+        {
+            if (tabs[i]->closable)
             {
-                if (tabs[i]->closable)
+                if (i < index)
                 {
-                    if (i < index)
-                    {
-                        ++leftClosables;
-                    }
-                    else if (i > index)
-                    {
-                        ++rightClosables;
-                    }
+                    ++leftClosables;
+                }
+                else if (i > index)
+                {
+                    ++rightClosables;
                 }
             }
-
-            bool closable = owner->isTabClosable(index);
-            int allClosables = leftClosables + rightClosables + closable;
-
-            // set actions' status
-            closeAction->setVisible(closable);
-            closeOthersAction->setVisible(leftClosables || rightClosables);
-
-            closeLeftTabsAction->setVisible(leftClosables);
-            closeRightTabsAction->setVisible(rightClosables);
-
-            closeAllTabsAction->setVisible(allClosables > 0 && allClosables != closable);
-
-            detachAction->setVisible(owner->isTabDetachable(index));
-        }
-        else
-        {
-            closeAction->setVisible(false);
-            closeOthersAction->setVisible(false);
-
-            closeLeftTabsAction->setVisible(false);
-            closeRightTabsAction->setVisible(false);
-
-            closeAllTabsAction->setVisible(false);
-
-            detachAction->setVisible(false);
         }
 
-        bool showSettingsAction = true;
-        auto site = owner->parentWidget();
-        if (site)
-        {
-            showSettingsAction = !site->windowFlags().testFlag(Qt::Popup);
-        }
-        settingsAction->setVisible(showSettingsAction);
+        bool closable = owner->isTabClosable(index);
+        int allClosables = leftClosables + rightClosables + closable;
 
-        if (showTabActions || showSettingsAction)
-        {
-            menu->exec(owner->mapToGlobal(pos));
-        }
-    });
+        // set actions' status
+        closeAction->setVisible(closable);
+        closeOthersAction->setVisible(leftClosables || rightClosables);
+
+        closeLeftTabsAction->setVisible(leftClosables);
+        closeRightTabsAction->setVisible(rightClosables);
+
+        closeAllTabsAction->setVisible(allClosables > 0 && allClosables != closable);
+
+        detachAction->setVisible(owner->isTabDetachable(index));
+    }
+    else
+    {
+        closeAction->setVisible(false);
+        closeOthersAction->setVisible(false);
+
+        closeLeftTabsAction->setVisible(false);
+        closeRightTabsAction->setVisible(false);
+
+        closeAllTabsAction->setVisible(false);
+
+        detachAction->setVisible(false);
+    }
+
+    bool showSettingsAction = true;
+    auto site = owner->parentWidget();
+    if (site)
+    {
+        showSettingsAction = !site->windowFlags().testFlag(Qt::Popup);
+    }
+    settingsAction->setVisible(showSettingsAction);
+
+    if (showTabActions || showSettingsAction)
+    {
+        menu->exec(globalPosition);
+    }
 }
 
 void QcwTabFolderPrivate::createTabBarButtons()
@@ -2649,20 +2655,12 @@ void QcwTabFolderPrivate::createTabBarButtons()
             return;
         }
 
-        QMap<int, QPair<QString, QIcon>> hiddenTabs;
-        QMap<int, QPair<QString, QIcon>> visibleTabs;
+        QList<int> hiddenTabs;
+        QList<int> visibleTabs;
 
         for (int i = 0; i < tabs.size(); ++i)
         {
-            auto tab = tabs[i];
-            if (!tab->visible)
-            {
-                hiddenTabs.insert(i, { tab->text, tab->icon });
-            }
-            else
-            {
-                visibleTabs.insert(i, { tab->text, tab->icon });
-            }
+            (tabs[i]->visible ? visibleTabs : hiddenTabs).append(i);
         }
 
         auto listWidget = new QcwTabListWidget(true, owner);
@@ -2671,22 +2669,50 @@ void QcwTabFolderPrivate::createTabBarButtons()
 
         auto font = owner->font();
         font.setBold(true);
-        for (const auto& [index, p] : hiddenTabs.asKeyValueRange())
+        const auto addTabItem = [this, listWidget](int index, const QFont& itemFont)
         {
-            auto item = listWidget->addItem(p.first, p.second, font);
+            auto tab = tabs[index];
+            // The dirty marker and color belong to the tab, not to the popup. The renderer
+            // decides the color (the QCW styled renderer uses blue for dirty text); an
+            // invalid color leaves the normal palette foreground.
+            const QColor dirtyColor =
+                tab->dirty ? renderer->tabTextColor(QcwTabFolderRenderer::Normal, true) : QColor();
+            auto item = listWidget->addItem(tab->text, tab->icon, itemFont, tab->dirty, dirtyColor);
             item->setData(index, Qt::UserRole);
+        };
+
+        for (int index : std::as_const(hiddenTabs))
+        {
+            addTabItem(index, font);
         }
 
-        for (const auto& [index, p] : visibleTabs.asKeyValueRange())
+        for (int index : std::as_const(visibleTabs))
         {
-            auto item = listWidget->addItem(p.first, p.second, owner->font());
-            item->setData(index, Qt::UserRole);
+            addTabItem(index, owner->font());
         }
 
         QObject::connect(listWidget, &QcwTabListWidget::itemSelected, [this, listWidget](QStandardItem* item)
         {
             setCurrentIndex(item->data(Qt::UserRole).toInt());
             listWidget->close();
+        });
+
+        // Right-clicking a row reuses the folder's tab menu, so callers that add or disable
+        // actions through tabMenu() get the same behavior in the popup. The popup's item is
+        // made current first; the menu actions then fall back to the current tab because
+        // rightClickPosition is not a tab-bar position.
+        QObject::connect(listWidget, &QcwTabListWidget::itemContextMenuRequested, owner,
+                         [this](QStandardItem* item, const QPoint& globalPosition)
+        {
+            const int index = item->data(Qt::UserRole).toInt();
+            if (!isValidIndex(index))
+            {
+                return;
+            }
+
+            setCurrentIndex(index);
+            rightClickPosition = QPoint(-1, -1);
+            showTabContextMenu(globalPosition, index);
         });
 
         // The screen the popup has to stay inside is the one the button it is anchored to is on.
@@ -2696,6 +2722,13 @@ void QcwTabFolderPrivate::createTabBarButtons()
         auto screen = tabListButton->screen();
         auto screenRect = screen->availableGeometry();
 
+        // The popup has not been shown yet, so its width()/height() are still the default
+        // QWidget size. Measure it first; without this the edge clamp below compares against
+        // the wrong width and the popup runs off the right side of the screen.
+        listWidget->ensurePolished();
+        QSize popupSize = listWidget->sizeHint().boundedTo(screenRect.size());
+        listWidget->resize(popupSize);
+
         int spacing = (tabBarRect.height() - tabListButton->height()) / 2;
 
         QPoint globalPos;
@@ -2704,7 +2737,7 @@ void QcwTabFolderPrivate::createTabBarButtons()
             globalPos = tabListButton->mapToGlobal(tabListButton->rect().bottomLeft());
             globalPos.setY(globalPos.y() + spacing + 1);
 
-            int listWidgetBottom = globalPos.y() + listWidget->height();
+            int listWidgetBottom = globalPos.y() + popupSize.height();
             if (listWidgetBottom > screenRect.bottom())
             {
                 int diff = listWidgetBottom - screenRect.bottom();
@@ -2714,23 +2747,35 @@ void QcwTabFolderPrivate::createTabBarButtons()
         else
         {
             globalPos = tabListButton->mapToGlobal(tabListButton->rect().topLeft());
-            globalPos.setY(globalPos.y() - listWidget->height() - spacing - 1);
-
-            if (globalPos.y() < screenRect.top())
-            {
-                globalPos.setY(screenRect.top());
-            }
+            globalPos.setY(globalPos.y() - popupSize.height() - spacing - 1);
         }
 
-        int listWidgetRight = globalPos.x() + listWidget->width();
-        if (listWidgetRight > screenRect.right())
-        {
-            int diff = listWidgetRight - screenRect.right();
-            globalPos.setX(globalPos.x() - diff);
-        }
+        // Keep the whole popup inside the available screen area on both axes. Clamp after the
+        // preferred placement so a popup anchored near the right edge shifts left instead of
+        // overflowing, and one taller/wider than the screen starts at its top-left corner.
+        const int maxX = screenRect.right() - popupSize.width() + 1;
+        const int maxY = screenRect.bottom() - popupSize.height() + 1;
+        globalPos.setX(qBound(screenRect.left(), globalPos.x(), qMax(screenRect.left(), maxX)));
+        globalPos.setY(qBound(screenRect.top(), globalPos.y(), qMax(screenRect.top(), maxY)));
 
         listWidget->move(globalPos);
         listWidget->show();
+
+        // A top-level window may acquire frame margins between resize() and the first show, so
+        // its pre-show size is not always the final frame size. Re-clamp once against the real
+        // frame geometry; on the tested platforms the second move is no longer offset by the
+        // window manager, which keeps the popup fully inside the screen even at the edge.
+        const QRect frameGeometry = listWidget->frameGeometry();
+        const QSize frameSize = frameGeometry.size();
+        const int frameMaxX = screenRect.right() - frameSize.width() + 1;
+        const int frameMaxY = screenRect.bottom() - frameSize.height() + 1;
+        QPoint framePos = globalPos;
+        framePos.setX(qBound(screenRect.left(), framePos.x(), qMax(screenRect.left(), frameMaxX)));
+        framePos.setY(qBound(screenRect.top(), framePos.y(), qMax(screenRect.top(), frameMaxY)));
+        if (framePos != frameGeometry.topLeft())
+        {
+            listWidget->move(framePos);
+        }
     });
 }
 
