@@ -1091,10 +1091,24 @@ void QcwTabFolder::setTabIcon(int index, const QIcon& icon)
     if (impl->isValidIndex(index))
     {
         auto tab = impl->tabs[index];
+        // The icon adds its size plus a tab spacing to the tab width. A null -> non-null (or
+        // reverse) change therefore has to re-measure the tab and the close-button position;
+        // only repainting would leave the close button over the text. A different non-null icon
+        // has the same width, so a repaint is enough.
+        const bool hadIcon = impl->features.testFlag(qcw::ShowIcon) && !tab->icon.isNull();
+        const bool hasIcon = impl->features.testFlag(qcw::ShowIcon) && !icon.isNull();
         tab->icon = icon;
+
         if (tab->visible)
         {
-            update(tab->rect);
+            if (hadIcon != hasIcon)
+            {
+                impl->determineVisibleTabs();
+            }
+            else
+            {
+                update(tab->rect);
+            }
         }
     }
 }

@@ -11,8 +11,11 @@
 #include "QcwTabFolderRenderer.h"
 
 #include <QApplication>
+#include <QIcon>
 #include <QImage>
+#include <QMouseEvent>
 #include <QStringList>
+#include <QStyle>
 #include <QToolButton>
 #include <QWidget>
 #include <cstdio>
@@ -236,6 +239,52 @@ void testCurrentTabSurvivesExtremeNarrowing()
     check(folder.isTabVisible(folder.currentIndex()), "the current tab is the one that remains visible");
 }
 
+// Adding or removing an icon changes the tab width and therefore the close-button position.
+// The tab is added without an icon first, then the icon is set, which is what the Run console
+// does with its green/gray status dot.
+void testIconRecomputesCloseButton()
+{
+    std::fprintf(stderr, "--- icon moves the close button ---\n");
+
+    QcwTabFolder folder;
+    folder.resize(400, 100);
+    folder.addTab(new QWidget, QStringLiteral("Tab"));
+    folder.show();
+    QApplication::processEvents();
+
+    bool closeRequested = false;
+    QObject::connect(&folder, &QcwTabFolder::tabCloseRequested, [&closeRequested](int)
+    {
+        closeRequested = true;
+    });
+
+    folder.setTabIcon(0, folder.style()->standardIcon(QStyle::SP_FileIcon));
+    QApplication::processEvents();
+
+    const QFontMetrics metrics { folder.font() };
+    const int textWidth =
+        metrics.boundingRect(0, 0, 0, 0, QcwTabFolderRenderer::TabTextFlags, QStringLiteral("Tab")).width();
+    const int expectedX = folder.contentsRect().left() + QcwTabFolderRenderer::TabSpacing + folder.iconSize() +
+                          QcwTabFolderRenderer::TabSpacing + textWidth + QcwTabFolderRenderer::TabSpacing +
+                          QcwTabFolderRenderer::CloseRectSize / 2;
+
+    // The exact vertical center is private; scan the short tab-bar band around the expected
+    // close-button x. The old (pre-icon) close rect is one icon width to the left, so it does
+    // not satisfy this probe.
+    for (int y = 0; y < 40 && !closeRequested; ++y)
+    {
+        for (int dx = -3; dx <= 3 && !closeRequested; ++dx)
+        {
+            const QPoint pos(expectedX + dx, y);
+            QMouseEvent release(QEvent::MouseButtonRelease, QPointF(pos), QPointF(folder.mapToGlobal(pos)),
+                                Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+            QApplication::sendEvent(&folder, &release);
+        }
+    }
+
+    check(closeRequested, "the close button follows the icon and remains clickable");
+}
+
 // Feature changes must update the tab-bar buttons even when the folder is empty: the
 // visible-folder geometry pass is the only place that applies Minimizable/Maximizable.
 void testFeatureTogglesButtons()
@@ -391,6 +440,7 @@ int main(int argc, char** argv)
     testShowFullTitle();
     testTabListButtonCount();
     testFeatureTogglesButtons();
+    testIconRecomputesCloseButton();
 
     if (failures == 0)
     {
