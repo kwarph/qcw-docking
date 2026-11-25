@@ -10,6 +10,10 @@ qt_add_executable(folder_restore_state_test
     folder_restore_state_test.cpp
 )
 
+qt_add_executable(tab_action_state_test
+    tab_action_state_test.cpp
+)
+
 qt_add_executable(tab_folder_features_test
     tab_folder_features_test.cpp
 )
@@ -30,6 +34,7 @@ foreach(target IN ITEMS
     docking_drag_drop_test
     folder_maximize_test
     folder_restore_state_test
+    tab_action_state_test
     tab_folder_features_test
     tab_folder_mouse_test
     tab_folder_right_widget_test

@@ -17,6 +17,78 @@ class QcwTabFolderPrivate;
 class QcwTabFolderRenderer;
 
 /**
+ * @struct QcwTabActionIds
+ * @brief Identifies the standard actions of the tab bar context menu.
+ *
+ * @details Each value is the key tabAction() looks up in the folder's menu, so it names
+ *          one of the entries QcwTabFolder builds itself:
+ *          - @c Close: close the tab under the cursor.
+ *          - @c CloseOthers: close every other closable tab.
+ *          - @c CloseLeft / @c CloseRight: close the closable tabs to its left / right.
+ *          - @c CloseAll: close every closable tab.
+ *          - @c Detach: move the tab's pane into a new floating folder.
+ *          - @c FolderSettings: open the folder settings dialog.
+ *
+ *          The keys are QLatin1Strings and are passed to tabAction() as they are. They
+ *          stay the same across translations: the action text changes with the language,
+ *          the id does not, so code that looks an action up never has to follow a
+ *          translation.
+ *
+ * @par Customizing the menu
+ * setTabActionState() is the way to grey out or remove a standard entry for good, and
+ * tabMenu() returns the menu itself, so an application can insert its own actions
+ * before a standard one or append them. Do this once, right after the folder is
+ * constructed: the folder re-decides the visibility of its standard entries on every
+ * right click and leaves any action added through tabMenu() in place.
+ *
+ * @par
+ * @code
+ * auto* folder = new QcwTabFolder(parent);
+ *
+ * // Never offer detaching, and grey out closing the other tabs.
+ * folder->setTabActionState(QcwTabActionIds::Detach, qcw::TabActionState::Hidden);
+ * folder->setTabActionState(QcwTabActionIds::CloseOthers, qcw::TabActionState::Disabled);
+ *
+ * // Add application actions: one before "Close All", one at the end of the menu.
+ * QMenu* menu = folder->tabMenu();
+ * QAction* exportAction = menu->addAction(tr("Export..."));
+ * if (QAction* closeAll = folder->tabAction(QcwTabActionIds::CloseAll))
+ *     menu->insertAction(closeAll, exportAction);
+ * menu->addAction(tr("Properties..."));
+ * @endcode
+ *
+ * @note The actions belong to the folder: do not delete them. Their text is retranslated
+ *       by the folder, so setText() on a standard action is overwritten by a language
+ *       change.
+ * @note The visibility of the standard entries is recomputed on every right click from
+ *       the tab under the cursor (see showTabContextMenu()), so a bare setVisible(false)
+ *       on one of them is only a temporary hide. Use setTabActionState() to remove or
+ *       disable a standard entry for good. Custom actions added through tabMenu() are
+ *       never touched by that update; their enabled/visible state is the application's
+ *       to keep.
+ * @see tabAction()
+ * @see tabMenu()
+ * @see setTabActionState()
+ */
+struct QcwTabActionIds
+{
+    /// Close the tab under the cursor.
+    static constexpr QLatin1String Close { "QcwTabFolder/close" };
+    /// Close every other closable tab.
+    static constexpr QLatin1String CloseOthers { "QcwTabFolder/closeOthers" };
+    /// Close the closable tabs to the left of the tab under the cursor.
+    static constexpr QLatin1String CloseLeft { "QcwTabFolder/closeLeft" };
+    /// Close the closable tabs to the right of the tab under the cursor.
+    static constexpr QLatin1String CloseRight { "QcwTabFolder/closeRight" };
+    /// Close every closable tab.
+    static constexpr QLatin1String CloseAll { "QcwTabFolder/closeAll" };
+    /// Move the tab's pane into a new floating folder.
+    static constexpr QLatin1String Detach { "QcwTabFolder/detach" };
+    /// Open the folder settings dialog.
+    static constexpr QLatin1String FolderSettings { "QcwTabFolder/folderSettings" };
+};
+
+/**
  * @class QcwTabFolder
  * @brief A tab container widget that supports docking, floating and reordering.
  *
@@ -77,14 +149,21 @@ class QcwTabFolderRenderer;
  * in its own UI or settings has to re-read them. All three are written by saveState() and
  * read back by restoreState(), which is how a user's choice survives with the layout.
  *
+ * setTabActionState() outlives the per-click decision: an entry can be greyed out
+ * (@c Disabled) or removed (@c Hidden) by its QcwTabActionIds id, and @c Enabled hands it
+ * back to the rules above.
+ *
  * @see QcwTabFolderContainer
  * @see QcwTabFolderRenderer
+ * @see QcwTabActionIds
+ * @see qcw::TabActionState
  * @see qcw::FolderState
  * @see qcw::FolderFeatures
  */
 class QCWDOCK_EXPORT QcwTabFolder : public QFrame
 {
     Q_OBJECT
+
 public:
     /**
      * @brief Constructs a QcwTabFolder widget.
@@ -613,6 +692,74 @@ public:
      *       first), so one action list, including disabled entries, serves both surfaces.
      */
     QMenu* tabMenu() const;
+
+    /**
+     * @brief Gets one of the standard actions of the tab bar context menu by id.
+     * @param actionId The id of the action, one of the QcwTabActionIds values.
+     * @return The folder-owned QAction, or nullptr when @p actionId is not one of
+     *         QcwTabActionIds.
+     * @details The menu is built once in the constructor, so every standard action
+     *          exists from then on and the same pointer is returned for the life of
+     *          the folder. This is how an application inspects a standard entry, and
+     *          how it anchors its own entries when it inserts them through tabMenu().
+     * @note The returned action belongs to the folder: do not delete it and do not
+     *       reparent it. Its text is retranslated by the folder, so a setText() on it
+     *       is overwritten by a language change.
+     * @note setTabActionState() is the persistent way to disable or hide a standard
+     *       entry. A bare setEnabled(false) survives the folder's per-click update of
+     *       the menu, while a bare setVisible(false) on a close or detach action does
+     *       not, because the folder decides those visibilities again on every right
+     *       click.
+     * @see QcwTabActionIds
+     * @see setTabActionState()
+     * @see tabMenu()
+     */
+    QAction* tabAction(const QLatin1String& actionId) const;
+
+    /**
+     * @brief Sets how the tab bar context menu presents one of its standard entries.
+     * @param actionId The id of the action, one of the QcwTabActionIds values.
+     * @param state The new qcw::TabActionState: @c Enabled hands the entry back to the
+     *              folder's per-click rules, @c Disabled greys it out wherever it
+     *              applies, @c Hidden removes it from the menu.
+     * @return True when @p actionId names a standard action and the state was applied;
+     *         false when it does not, in which case nothing changes.
+     * @details The state belongs to the folder, not to a tab, and it outlives the
+     *          folder's per-click visibility update: a hidden entry stays hidden when
+     *          the menu is opened on another tab, and a disabled one stays disabled.
+     *          The flags are applied at once, using the current tab as the context, so
+     *          the caller can inspect tabAction()->isVisible() and isEnabled() right
+     *          away.
+     *
+     *          @c Disabled hides nothing that does not apply: when the tab under the
+     *          cursor cannot be closed, "Close" is hidden even though the state asks
+     *          for it to be shown. @c Hidden wins over every per-tab rule; hiding all
+     *          standard entries (and adding no visible one through tabMenu()) makes a
+     *          right click open no menu at all.
+     *
+     *          Once a state other than @c Enabled is set, the folder owns that
+     *          action's flags: a later setVisible()/setEnabled() on the returned
+     *          QAction is overwritten at the next right click. Setting @c Enabled
+     *          restores the action's enabled flag and returns its visibility to the
+     *          per-click rules.
+     * @note Only the QcwTabActionIds values are accepted; an application's own actions,
+     *       added through tabMenu(), are configured on the QAction it created.
+     * @see QcwTabActionIds
+     * @see qcw::TabActionState
+     * @see tabActionState()
+     * @see tabAction()
+     */
+    bool setTabActionState(const QLatin1String& actionId, qcw::TabActionState state);
+
+    /**
+     * @brief Gets the state that overrides how a standard entry is presented.
+     * @param actionId The id of the action, one of the QcwTabActionIds values.
+     * @return The state last set through setTabActionState(), or
+     *         @c qcw::TabActionState::Enabled when none was set or @p actionId is not
+     *         one of QcwTabActionIds.
+     * @see setTabActionState()
+     */
+    qcw::TabActionState tabActionState(const QLatin1String& actionId) const;
 
     /**
      * @brief Gets the total number of tabs.

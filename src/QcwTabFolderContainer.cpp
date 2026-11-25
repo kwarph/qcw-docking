@@ -1934,13 +1934,13 @@ void QcwTabFolderContainerPrivate::connectFolder(QcwTabFolder* folder)
     // dropped from them once it dies - e.g. its last tab is detached and the
     // emptied folder gets deleted, or a minimized/maximized folder is closed.
     // Otherwise saveState() dereferences a dangling pointer.
-    auto conn = QObject::connect(folder, &QObject::destroyed, [this, folder](QObject*)
+    auto conn = QObject::connect(folder, &QObject::destroyed, owner, [this, folder](QObject*)
     {
         forgetFolder(folder);
     });
     connections.append(conn);
 
-    conn = QObject::connect(folder, &QcwTabFolder::maximizeRequested, [this, folder]()
+    conn = QObject::connect(folder, &QcwTabFolder::maximizeRequested, owner, [this, folder]()
     {
         auto site = folder->parentWidget();
         if (folder == sharedFolder && site != sharedFolderSite) // sharedFolder owned by the other container
@@ -1999,7 +1999,7 @@ void QcwTabFolderContainerPrivate::connectFolder(QcwTabFolder* folder)
     });
     connections.append(conn);
 
-    conn = QObject::connect(folder, &QcwTabFolder::restoreRequested, [this, folder]()
+    conn = QObject::connect(folder, &QcwTabFolder::restoreRequested, owner, [this, folder]()
     {
         auto restoreMinimizedFolder = [this](QcwTabFolder* folder)
         {
@@ -2099,7 +2099,7 @@ void QcwTabFolderContainerPrivate::connectFolder(QcwTabFolder* folder)
     });
     connections.append(conn);
 
-    conn = QObject::connect(folder, &QcwTabFolder::minimizeRequested, [this, folder]()
+    conn = QObject::connect(folder, &QcwTabFolder::minimizeRequested, owner, [this, folder]()
     {
         auto site = folder->parentWidget();
         if (folder == sharedFolder && site != sharedFolderSite)
@@ -2181,7 +2181,7 @@ void QcwTabFolderContainerPrivate::connectFolder(QcwTabFolder* folder)
     });
     connections.append(conn);
 
-    conn = QObject::connect(folder, &QcwTabFolder::tabsCleared, [this, folder]()
+    conn = QObject::connect(folder, &QcwTabFolder::tabsCleared, owner, [this, folder]()
     {
         bool isCurrent = folder == currentFolder;
 
@@ -2274,7 +2274,7 @@ void QcwTabFolderContainerPrivate::connectFolder(QcwTabFolder* folder)
     });
     connections.append(conn);
 
-    conn = QObject::connect(folder, &QcwTabFolder::tabBarClicked, [this, folder](int tabIndex)
+    conn = QObject::connect(folder, &QcwTabFolder::tabBarClicked, owner, [this, folder](int tabIndex)
     {
         if (folder != currentFolder || folder->currentIndex() != tabIndex)
         {
@@ -2288,20 +2288,20 @@ void QcwTabFolderContainerPrivate::connectFolder(QcwTabFolder* folder)
     connections.append(conn);
 
 #ifdef QCWDOCK_DEBUG
-    conn = QObject::connect(folder, &QcwTabFolder::tabAdded, [this, folder](int)
+    conn = QObject::connect(folder, &QcwTabFolder::tabAdded, owner, [this, folder](int)
     {
         dumpLayout("Tab Added");
     });
     connections.append(conn);
 
-    conn = QObject::connect(folder, &QcwTabFolder::tabRemoved, [this, folder](int, QWidget*)
+    conn = QObject::connect(folder, &QcwTabFolder::tabRemoved, owner, [this, folder](int, QWidget*)
     {
         dumpLayout("Tab Removed");
     });
     connections.append(conn);
 
-    conn =
-        QObject::connect(folder, &QcwTabFolder::tabTransferred, [this, folder](QcwTabFolder*, QcwTabFolder*, QWidget*)
+    conn = QObject::connect(folder, &QcwTabFolder::tabTransferred, owner,
+                            [this, folder](QcwTabFolder*, QcwTabFolder*, QWidget*)
     {
         dumpLayout("Tab Transferred");
     });

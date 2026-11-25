@@ -398,6 +398,9 @@ public:
 
     void createMenu();
     void showTabContextMenu(const QPoint& globalPosition, int index);
+    void updateTabActionStates(int index);
+    void applyTabActionState(QAction* action, const QLatin1String& actionId, bool applicable);
+    bool menuHasVisibleEntries() const;
     void createTabBarButtons();
     void retranslateUi();
     void createOverlays();
@@ -510,6 +513,8 @@ public:
     bool dragInProcess { false };
 
     QMenu* menu { nullptr };
+    QMap<QLatin1String, QAction*> namedActions;
+    QMap<QLatin1String, qcw::TabActionState> tabActionStates;
     QAction* closeAction { nullptr };
     QAction* closeOthersAction { nullptr };
     QAction* closeLeftTabsAction { nullptr };
@@ -679,9 +684,9 @@ void QcwTabFolder::saveState(QXmlStreamWriter& writer) const
         // tab from a renamed one once the two languages disagree. Written even when there is
         // nothing to record: an empty value means the tab was named by whoever made it, while no
         // value at all means the document predates the attribute and cannot say.
-        writer.writeAttribute("defaultText",
-                              tab->widget ? tab->widget->property(qcw::ViewDefaultTitlePropertyName).toString()
-                                          : QString {});
+        writer.writeAttribute("defaultText", tab->widget ?
+                                                 tab->widget->property(qcw::ViewDefaultTitlePropertyName).toString() :
+                                                 QString {});
         writer.writeAttribute("toolTip", tab->toolTip);
 
         ba = QcwDockSerializeUtils::serialize(tab->data);
@@ -771,9 +776,9 @@ bool QcwTabFolder::restoreState(QXmlStreamReader& reader, const QMap<int, QPair<
                         if (index >= 0) // a saved duplicate is dropped with its tab element
                         {
                             widgetPair.first->setProperty(qcw::ViewDefaultTitlePropertyName,
-                                                          tabAttrs.hasAttribute("defaultText")
-                                                              ? tabAttrs.value("defaultText").toString()
-                                                              : savedText);
+                                                          tabAttrs.hasAttribute("defaultText") ?
+                                                              tabAttrs.value("defaultText").toString() :
+                                                              savedText);
 
                             auto tab = impl->tabs[index];
                             tab->toolTip = tabAttrs.value("toolTip").toString();
@@ -1310,6 +1315,40 @@ void QcwTabFolder::setState(qcw::FolderState state)
 QMenu* QcwTabFolder::tabMenu() const
 {
     return impl->menu;
+}
+
+QAction* QcwTabFolder::tabAction(const QLatin1String& actionId) const
+{
+    return impl->namedActions.value(actionId);
+}
+
+bool QcwTabFolder::setTabActionState(const QLatin1String& actionId, qcw::TabActionState state)
+{
+    QAction* action = impl->namedActions.value(actionId);
+    if (!action)
+    {
+        return false;
+    }
+
+    const auto previous = impl->tabActionStates.value(actionId, qcw::TabActionState::Enabled);
+    impl->tabActionStates.insert(actionId, state);
+
+    // Disabled is the only state that changes the enabled flag, so leaving it has to give the
+    // flag back; Enabled otherwise leaves a bare setEnabled(false) alone.
+    if (previous == qcw::TabActionState::Disabled && state != qcw::TabActionState::Disabled)
+    {
+        action->setEnabled(true);
+    }
+
+    // Apply at once against the current tab, so the caller sees the effect without waiting
+    // for the next right click.
+    impl->updateTabActionStates(impl->currentIndex);
+    return true;
+}
+
+qcw::TabActionState QcwTabFolder::tabActionState(const QLatin1String& actionId) const
+{
+    return impl->tabActionStates.value(actionId, qcw::TabActionState::Enabled);
 }
 
 int QcwTabFolder::indexOf(QWidget* widget) const
@@ -2393,7 +2432,7 @@ void QcwTabFolderPrivate::createMenu()
     menu = new QMenu(owner);
 
     closeAction = new QAction(owner);
-    QObject::connect(closeAction, &QAction::triggered, [this](bool)
+    QObject::connect(closeAction, &QAction::triggered, owner, [this](bool)
     {
         auto index = indexAt(rightClickPosition);
         if (!isValidIndex(index))
@@ -2412,7 +2451,7 @@ void QcwTabFolderPrivate::createMenu()
     });
 
     closeOthersAction = new QAction(owner);
-    QObject::connect(closeOthersAction, &QAction::triggered, [this](bool)
+    QObject::connect(closeOthersAction, &QAction::triggered, owner, [this](bool)
     {
         auto index = indexAt(rightClickPosition);
         if (!isValidIndex(index))
@@ -2434,7 +2473,7 @@ void QcwTabFolderPrivate::createMenu()
     });
 
     closeLeftTabsAction = new QAction(owner);
-    QObject::connect(closeLeftTabsAction, &QAction::triggered, [this](bool)
+    QObject::connect(closeLeftTabsAction, &QAction::triggered, owner, [this](bool)
     {
         auto index = indexAt(rightClickPosition);
         if (!isValidIndex(index))
@@ -2456,7 +2495,7 @@ void QcwTabFolderPrivate::createMenu()
     });
 
     closeRightTabsAction = new QAction(owner);
-    QObject::connect(closeRightTabsAction, &QAction::triggered, [this](bool)
+    QObject::connect(closeRightTabsAction, &QAction::triggered, owner, [this](bool)
     {
         auto index = indexAt(rightClickPosition);
         if (!isValidIndex(index))
@@ -2478,7 +2517,7 @@ void QcwTabFolderPrivate::createMenu()
     });
 
     closeAllTabsAction = new QAction(owner);
-    QObject::connect(closeAllTabsAction, &QAction::triggered, [this](bool)
+    QObject::connect(closeAllTabsAction, &QAction::triggered, owner, [this](bool)
     {
         for (int i = tabs.size() - 1; i >= 0; --i)
         {
@@ -2490,7 +2529,7 @@ void QcwTabFolderPrivate::createMenu()
     });
 
     detachAction = new QAction(owner);
-    QObject::connect(detachAction, &QAction::triggered, [this](bool)
+    QObject::connect(detachAction, &QAction::triggered, owner, [this](bool)
     {
         auto index = indexAt(rightClickPosition);
         if (!isValidIndex(index))
@@ -2509,7 +2548,7 @@ void QcwTabFolderPrivate::createMenu()
     });
 
     settingsAction = new QAction(owner);
-    QObject::connect(settingsAction, &QAction::triggered, [this](bool)
+    QObject::connect(settingsAction, &QAction::triggered, owner, [this](bool)
     {
         auto dialog = new QcwTabFolderSettingsDialog(owner);
         dialog->setAttribute(Qt::WA_DeleteOnClose);
@@ -2517,17 +2556,30 @@ void QcwTabFolderPrivate::createMenu()
     });
 
     menu->addAction(closeAction);
+    namedActions.insert(QcwTabActionIds::Close, closeAction);
+
     menu->addAction(closeOthersAction);
+    namedActions.insert(QcwTabActionIds::CloseOthers, closeOthersAction);
+
     menu->addAction(closeLeftTabsAction);
+    namedActions.insert(QcwTabActionIds::CloseLeft, closeLeftTabsAction);
+
     menu->addAction(closeRightTabsAction);
+    namedActions.insert(QcwTabActionIds::CloseRight, closeRightTabsAction);
+
     menu->addSeparator();
     menu->addAction(closeAllTabsAction);
+    namedActions.insert(QcwTabActionIds::CloseAll, closeAllTabsAction);
+
     menu->addSeparator();
     menu->addAction(detachAction);
+    namedActions.insert(QcwTabActionIds::Detach, detachAction);
+
     menu->addSeparator();
     menu->addAction(settingsAction);
+    namedActions.insert(QcwTabActionIds::FolderSettings, settingsAction);
 
-    QObject::connect(owner, &QcwTabFolder::customContextMenuRequested, [this](const QPoint& pos)
+    QObject::connect(owner, &QcwTabFolder::customContextMenuRequested, owner, [this](const QPoint& pos)
     {
         if (!tabBarRect.contains(pos))
         {
@@ -2547,65 +2599,97 @@ void QcwTabFolderPrivate::createMenu()
 
 void QcwTabFolderPrivate::showTabContextMenu(const QPoint& globalPosition, int index)
 {
-    const bool showTabActions = isValidIndex(index);
-    if (showTabActions)
-    {
-        int leftClosables = 0;
-        int rightClosables = 0;
-        for (int i = 0; i < tabs.size(); ++i)
-        {
-            if (tabs[i]->closable)
-            {
-                if (i < index)
-                {
-                    ++leftClosables;
-                }
-                else if (i > index)
-                {
-                    ++rightClosables;
-                }
-            }
-        }
+    updateTabActionStates(index);
 
-        bool closable = owner->isTabClosable(index);
-        int allClosables = leftClosables + rightClosables + closable;
-
-        // set actions' status
-        closeAction->setVisible(closable);
-        closeOthersAction->setVisible(leftClosables || rightClosables);
-
-        closeLeftTabsAction->setVisible(leftClosables);
-        closeRightTabsAction->setVisible(rightClosables);
-
-        closeAllTabsAction->setVisible(allClosables > 0 && allClosables != closable);
-
-        detachAction->setVisible(owner->isTabDetachable(index));
-    }
-    else
-    {
-        closeAction->setVisible(false);
-        closeOthersAction->setVisible(false);
-
-        closeLeftTabsAction->setVisible(false);
-        closeRightTabsAction->setVisible(false);
-
-        closeAllTabsAction->setVisible(false);
-
-        detachAction->setVisible(false);
-    }
-
-    bool showSettingsAction = true;
-    auto site = owner->parentWidget();
-    if (site)
-    {
-        showSettingsAction = !site->windowFlags().testFlag(Qt::Popup);
-    }
-    settingsAction->setVisible(showSettingsAction);
-
-    if (showTabActions || showSettingsAction)
+    // Nothing left to offer: every standard entry is hidden and the application added no
+    // visible action of its own through tabMenu(). Do not flash an empty popup.
+    if (menuHasVisibleEntries())
     {
         menu->exec(globalPosition);
     }
+}
+
+void QcwTabFolderPrivate::updateTabActionStates(int index)
+{
+    const bool showTabActions = isValidIndex(index);
+
+    // Which close entries apply is a property of the tab under the cursor: a non-closable
+    // tab hides "Close", a tab with no closable neighbour hides "Close Others", and so on.
+    bool closable = false;
+    int leftClosables = 0;
+    int rightClosables = 0;
+    if (showTabActions)
+    {
+        for (int i = 0; i < tabs.size(); ++i)
+        {
+            if (!tabs[i]->closable)
+            {
+                continue;
+            }
+
+            if (i < index)
+            {
+                ++leftClosables;
+            }
+            else if (i > index)
+            {
+                ++rightClosables;
+            }
+        }
+
+        closable = owner->isTabClosable(index);
+    }
+
+    const int closableHere = closable ? 1 : 0;
+    const int allClosables = leftClosables + rightClosables + closableHere;
+
+    applyTabActionState(closeAction, QcwTabActionIds::Close, closable);
+    applyTabActionState(closeOthersAction, QcwTabActionIds::CloseOthers, leftClosables || rightClosables);
+    applyTabActionState(closeLeftTabsAction, QcwTabActionIds::CloseLeft, leftClosables > 0);
+    applyTabActionState(closeRightTabsAction, QcwTabActionIds::CloseRight, rightClosables > 0);
+    applyTabActionState(closeAllTabsAction, QcwTabActionIds::CloseAll,
+                        allClosables > 0 && allClosables != closableHere);
+    applyTabActionState(detachAction, QcwTabActionIds::Detach, showTabActions && owner->isTabDetachable(index));
+
+    // The settings entry does not depend on the tab under the cursor; it is dropped only for
+    // a folder whose parent is a popup, where the settings dialog would be parented wrongly.
+    const QWidget* site = owner->parentWidget();
+    applyTabActionState(settingsAction, QcwTabActionIds::FolderSettings,
+                        !site || !site->windowFlags().testFlag(Qt::Popup));
+}
+
+void QcwTabFolderPrivate::applyTabActionState(QAction* action, const QLatin1String& actionId, bool applicable)
+{
+    switch (tabActionStates.value(actionId, qcw::TabActionState::Enabled))
+    {
+    case qcw::TabActionState::Hidden:
+        action->setVisible(false);
+        break;
+    case qcw::TabActionState::Disabled:
+        // Greyed out, not removed: the entry still tells the user the operation exists.
+        // Visibility keeps following the per-tab rules, so an entry that does not apply is
+        // hidden rather than shown greyed out.
+        action->setEnabled(false);
+        action->setVisible(applicable);
+        break;
+    case qcw::TabActionState::Enabled:
+        action->setVisible(applicable);
+        break;
+    }
+}
+
+bool QcwTabFolderPrivate::menuHasVisibleEntries() const
+{
+    const auto actions = menu->actions();
+    for (const QAction* action : actions)
+    {
+        if (!action->isSeparator() && action->isVisible())
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void QcwTabFolderPrivate::createTabBarButtons()
@@ -2622,7 +2706,7 @@ void QcwTabFolderPrivate::createTabBarButtons()
     minimizeButton->setFocusPolicy(Qt::ClickFocus);
     minimizeButton->setIcon(renderer->renderMinimizeIcon());
 
-    QObject::connect(minimizeButton, &QToolButton::clicked, [this](bool)
+    QObject::connect(minimizeButton, &QToolButton::clicked, owner, [this](bool)
     {
         if (features.testFlag(qcw::Minimizable))
         {
@@ -2638,7 +2722,7 @@ void QcwTabFolderPrivate::createTabBarButtons()
     maximizeButton->setFocusPolicy(Qt::ClickFocus);
     maximizeButton->setIcon(renderer->renderMaximizeIcon(state));
 
-    QObject::connect(maximizeButton, &QToolButton::clicked, [this](bool)
+    QObject::connect(maximizeButton, &QToolButton::clicked, owner, [this](bool)
     {
         if (features.testFlag(qcw::Maximizable))
         {
@@ -2662,7 +2746,7 @@ void QcwTabFolderPrivate::createTabBarButtons()
     tabListButton->setVisible(tabs.size() > visibleCount());
     tabListButton->setFocusPolicy(Qt::ClickFocus);
 
-    QObject::connect(tabListButton, &QToolButton::clicked, [this](bool)
+    QObject::connect(tabListButton, &QToolButton::clicked, owner, [this](bool)
     {
         if (tabs.size() <= visibleCount())
         {
@@ -2705,7 +2789,7 @@ void QcwTabFolderPrivate::createTabBarButtons()
             addTabItem(index, owner->font());
         }
 
-        QObject::connect(listWidget, &QcwTabListWidget::itemSelected, [this, listWidget](QStandardItem* item)
+        QObject::connect(listWidget, &QcwTabListWidget::itemSelected, owner, [this, listWidget](QStandardItem* item)
         {
             setCurrentIndex(item->data(Qt::UserRole).toInt());
             listWidget->close();
@@ -2804,9 +2888,9 @@ void QcwTabFolderPrivate::retranslateUi()
     settingsAction->setText(QCoreApplication::translate("QcwTabFolder", "Folder Settings..."));
 
     minimizeButton->setToolTip(QCoreApplication::translate("QcwTabFolder", "Minimize"));
-    maximizeButton->setToolTip(
-        state == qcw::FolderState::Normal ? QCoreApplication::translate("QcwTabFolder", "Maximize")
-                                          : QCoreApplication::translate("QcwTabFolder", "Restore"));
+    maximizeButton->setToolTip(state == qcw::FolderState::Normal ?
+                                   QCoreApplication::translate("QcwTabFolder", "Maximize") :
+                                   QCoreApplication::translate("QcwTabFolder", "Restore"));
     tabListButton->setToolTip(QCoreApplication::translate("QcwTabFolder", "Show Hidden Tabs"));
 }
 
@@ -4115,21 +4199,21 @@ QcwTabFolderSettingsDialog::QcwTabFolderSettingsDialog(QcwTabFolder* theFolder, 
     connect(buttonBox, &QDialogButtonBox::accepted, this, qOverload<>(&QDialog::accept));
     connect(buttonBox, &QDialogButtonBox::rejected, this, qOverload<>(&QDialog::reject));
 
-    connect(iconSizeSpinBox, &QSpinBox::valueChanged, [this](int value)
+    connect(iconSizeSpinBox, &QSpinBox::valueChanged, this, [this](int value)
     {
         iconSize = value;
         applyButton->setEnabled(features != folder->features() || iconSize != folder->iconSize() ||
                                 minTextWidth != folder->minimumTextRectWidth());
     });
 
-    connect(textWidthSpinBox, &QSpinBox::valueChanged, [this](int value)
+    connect(textWidthSpinBox, &QSpinBox::valueChanged, this, [this](int value)
     {
         minTextWidth = value;
         applyButton->setEnabled(features != folder->features() || iconSize != folder->iconSize() ||
                                 minTextWidth != folder->minimumTextRectWidth());
     });
 
-    connect(applyButton, &QPushButton::clicked, [this](bool)
+    connect(applyButton, &QPushButton::clicked, this, [this](bool)
     {
         for (const auto& [checkBox, feature] : checkBoxMap.asKeyValueRange())
         {
@@ -4141,7 +4225,7 @@ QcwTabFolderSettingsDialog::QcwTabFolderSettingsDialog(QcwTabFolder* theFolder, 
         folder->setMinimumTextRectWidth(minTextWidth);
     });
 
-    connect(defaultButton, &QPushButton::clicked, [this](bool)
+    connect(defaultButton, &QPushButton::clicked, this, [this](bool)
     {
         setupCheckBoxes(qcw::DefaultTabFeatures);
 
@@ -4180,6 +4264,8 @@ QString QcwTabFolderSettingsDialog::featureLabel(qcw::FolderFeature feature)
         return tr("Maximizable");
     case qcw::ShowUnselectedClose:
         return tr("Show unselected close button");
+    default:
+        break;
     }
 
     return QString {};
@@ -4204,13 +4290,14 @@ QString QcwTabFolderSettingsDialog::featureDescription(qcw::FolderFeature featur
     case qcw::Minimizable:
         return tr("Enables the minimize button/functionality for the folder");
     case qcw::ShowClose:
-        return tr(
-            "Displays the close button on the active/selected tab (not affect whether the tab can be closed)");
+        return tr("Displays the close button on the active/selected tab (not affect whether the tab can be closed)");
     case qcw::Maximizable:
         return tr("Enables the maximize button/functionality for the folder");
     case qcw::ShowUnselectedClose:
         return tr("Displays the close button when hovering on an unselected tab (not affect whether the tab can be "
-                   "closed)");
+                  "closed)");
+    default:
+        break;
     }
 
     return QString {};
@@ -4252,7 +4339,7 @@ void QcwTabFolderSettingsDialog::addCheckBox(QCheckBox* checkBox, qcw::FolderFea
 {
     checkBoxMap.insert(checkBox, feature);
 
-    connect(checkBox, &QCheckBox::checkStateChanged, [this, feature](Qt::CheckState state)
+    connect(checkBox, &QCheckBox::checkStateChanged, this, [this, feature](Qt::CheckState state)
     {
         features.setFlag(feature, state == Qt::Checked);
 

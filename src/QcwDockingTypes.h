@@ -170,6 +170,29 @@ enum class EmptyFolderAction
     Delete ///< Remove the folder from the layout entirely.
 };
 
+/**
+ * @enum TabActionState
+ * @brief Overrides how a standard entry of the tab bar context menu is presented.
+ *
+ * @details The folder decides the visibility of its standard entries on every right
+ * click from the tab under the cursor: "Close" is hidden when that tab cannot be
+ * closed, "Detach" when it cannot be detached, and so on. A state set with
+ * QcwTabFolder::setTabActionState() outlives that per-click update, which a bare
+ * QAction::setVisible() does not.
+ *
+ * @see QcwTabFolder::setTabActionState(), QcwTabActionIds
+ */
+enum class TabActionState
+{
+    /// The folder decides the visibility from the tab under the cursor and leaves the
+    /// enabled flag to the application, as if no state had been set. The default.
+    Enabled,
+    /// Entry is shown whenever it applies to the tab under the cursor, but is not clickable.
+    Disabled,
+    /// Entry is never shown.
+    Hidden
+};
+
 } // namespace qcw
 
 QT_END_NAMESPACE

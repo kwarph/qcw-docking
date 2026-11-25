@@ -63,7 +63,7 @@ QcwFastViewToolBar::QcwFastViewToolBar(
     setToolButtonStyle(Qt::ToolButtonIconOnly);
     setAllowedAreas(Qt::LeftToolBarArea | Qt::RightToolBarArea);
 
-    auto conn = connect(impl->folder, &QcwTabFolder::tabsChanged, [this]()
+    auto conn = connect(impl->folder, &QcwTabFolder::tabsChanged, this, [this]()
     {
         impl->createActions();
     });
@@ -71,13 +71,13 @@ QcwFastViewToolBar::QcwFastViewToolBar(
 
     // Either the layout took the folder back or the folder is going away; both mean it must not
     // stay parented to this toolbar, which would take the folder down with it when it is deleted.
-    conn = connect(impl->folder, &QcwTabFolder::aboutToRestore, [this]()
+    conn = connect(impl->folder, &QcwTabFolder::aboutToRestore, this, [this]()
     {
         impl->discardToolBar();
     });
     impl->connections.append(conn);
 
-    conn = connect(impl->folder, &QcwTabFolder::aboutToDelete, [this]()
+    conn = connect(impl->folder, &QcwTabFolder::aboutToDelete, this, [this]()
     {
         impl->discardToolBar();
     });
@@ -158,7 +158,7 @@ void QcwFastViewToolBarPrivate::createActions()
     action->setToolTip(QcwFastViewToolBar::tr("Restore"));
     action->setIcon(folder->renderer()->renderMaximizeIcon(qcw::FolderState::Minimized));
 
-    QObject::connect(action, &QAction::triggered, [this](bool)
+    QObject::connect(action, &QAction::triggered, owner, [this](bool)
     {
         // The folder has to sit in originalSite before the request goes out, because the layout
         // restores whatever site folder->parentWidget() reports. aboutToRestore then discards this
@@ -176,7 +176,7 @@ void QcwFastViewToolBarPrivate::createActions()
         action->setToolTip(text);
         action->setIcon(folder->renderer()->renderViewIcon());
 
-        QObject::connect(action, &QAction::triggered, [this](bool)
+        QObject::connect(action, &QAction::triggered, owner, [this](bool)
         {
             showFastView(-1);
         });
@@ -197,7 +197,7 @@ void QcwFastViewToolBarPrivate::createActions()
             }
             action->setIcon(icon);
 
-            QObject::connect(action, &QAction::triggered, [this, index](bool)
+            QObject::connect(action, &QAction::triggered, owner, [this, index](bool)
             {
                 showFastView(index);
             });

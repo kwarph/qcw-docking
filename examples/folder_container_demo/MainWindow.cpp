@@ -150,6 +150,9 @@ void MainWindow::createInitialLayout()
 
     auto folder1 = ui->folderContainer->createFolder(nullptr, qcw::LeftDockArea);
     auto pane = createPane("QLabel", { QString { "Projects" } });
+    // The demo has no per-folder settings to offer, so drop the entry for good; a bare
+    // setVisible(false) on the action would come back at the next right click.
+    folder1->setTabActionState(QcwTabActionIds::FolderSettings, qcw::TabActionState::Hidden);
 
     auto index = folder1->addTab(pane, "Projects", icon);
     folder1->setTabData(index, qcw::TabPaneIdPropertyName, pane->property(qcw::TabPaneIdPropertyName));

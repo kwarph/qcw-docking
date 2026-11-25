@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.23)
 # Single source of truth for the library version; release tags are v${PROJECT_VERSION}.
 project(qcwdocking
-    VERSION 1.1.1
+    VERSION 1.2.0
     LANGUAGES CXX
 )
 
