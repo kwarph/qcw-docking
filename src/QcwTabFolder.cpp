@@ -2057,7 +2057,14 @@ bool QcwTabFolder::eventFilter(QObject* obj, QEvent* event)
         {
             // Only the in-pane position is driven by the pane; whether the bar can host
             // the widget is decided by this folder's own resize handling.
-            if (impl->rightWidgetInPage)
+            //
+            // A pane can be shared by several folders (the same single-instance view in two
+            // perspectives, for example), and only one of them parents it at a time. The
+            // others still filter the pane and would otherwise re-place it with the geometry
+            // of a page they are not showing, which makes two folders fight over the same
+            // widget forever. Leave the layout to the hosting folder; it reparents the pane
+            // and lays it out again whenever it becomes current.
+            if (impl->rightWidgetInPage && impl->current->parentWidget() == this)
             {
                 impl->layoutRightWidget();
             }
@@ -3637,11 +3644,12 @@ void QcwTabFolderPrivate::releaseRightWidget()
 
 void QcwTabFolderPrivate::layoutRightWidget()
 {
-    if (!rightWidget || !current || !rightWidgetInPage)
+    // A shared pane is laid out by the folder that parents it; the other folders must not
+    // touch its geometry (see the Resize branch in QcwTabFolder::eventFilter()).
+    if (!rightWidget || !current || !rightWidgetInPage || current->parentWidget() != owner)
     {
         return;
     }
-
     const QRect page = pageRect();
     const int reserved = placeRightWidgetInPage(page);
     current->setGeometry(page.x(), page.y() + reserved, page.width(), page.height() - reserved);
