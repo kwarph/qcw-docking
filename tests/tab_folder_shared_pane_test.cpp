@@ -60,8 +60,7 @@ int main(int argc, char* argv[])
     app.processEvents();
 
     check(pane.parentWidget() == &host, "a hidden folder does not take the pane back on a style change");
-    check(pane.geometry() == beforeStyleChange,
-          "a hidden folder does not resize a shared pane it does not parent");
+    check(pane.geometry() == beforeStyleChange, "a hidden folder does not resize a shared pane it does not parent");
 
     // Showing the parked folder takes the pane, and the host takes it back when it becomes
     // current again. A stale current pointer must not short-circuit the reclaim.
@@ -74,6 +73,35 @@ int main(int argc, char* argv[])
     app.processEvents();
     check(pane.parentWidget() == &host, "the host takes the shared pane back");
     check(pane.geometry() == hostedGeometry, "the reclaimed pane gets the host's geometry");
+
+    // A visible shared pane can be parented to the parked folder while the host still names it
+    // as current. Reparenting before the early-return decision would leave the host's old
+    // geometry behind (the Build console's stale width).
+    QcwTabFolder visibleHost;
+    visibleHost.resize(600, 400);
+    QWidget visiblePane;
+    visibleHost.addTab(&visiblePane, "VisibleHost");
+    visibleHost.show();
+    app.processEvents();
+
+    QcwTabFolder visibleParked;
+    visibleParked.resize(120, 30);
+    visibleParked.addTab(&visiblePane, "VisibleParked");
+    visibleParked.show();
+    app.processEvents();
+    check(visiblePane.parentWidget() == &visibleParked, "the parked folder hosts the visible pane");
+
+    visibleHost.setCurrentIndex(0);
+    app.processEvents();
+    check(visiblePane.parentWidget() == &visibleHost, "the host reclaims a visible shared pane");
+    check(visiblePane.width() > visibleParked.width(), "reclaiming updates the pane to the host's width");
+
+    // A pane already current but still carrying its construction size must still be laid out.
+    visiblePane.resize(640, 450);
+    visibleHost.setCurrentIndex(0);
+    app.processEvents();
+    check(visiblePane.width() != 640 || visibleHost.width() == 640,
+          "an already-current pane is relaid out to the folder's page");
 
     if (failures == 0)
     {

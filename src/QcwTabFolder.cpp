@@ -4105,18 +4105,24 @@ void QcwTabFolderPrivate::showWidget(int index)
         widget = tabs[index]->widget;
     }
 
+    QWidget* targetWidget = widget ? widget : placeholder;
+
+    // A shared pane may still be parented to another folder even though this folder's
+    // current pointer names it. Decide before reparenting: once setParent(owner) has run,
+    // checking the parent here would return early and leave the pane at the other folder's
+    // geometry.
+    if (current == targetWidget && current->isVisible() && current->parentWidget() == owner)
+    {
+        // Already showing the right pane, but its geometry may still be the default size
+        // from construction (a view added to a visible folder, then made current). Re-apply
+        // the page rectangle before the early return.
+        computeWidgetGeometry();
+        return;
+    }
+
     if (widget && widget->parentWidget() != owner)
     {
         widget->setParent(owner);
-    }
-
-    QWidget* targetWidget = widget ? widget : placeholder;
-    // A shared pane may still be parented to another folder even though this folder's
-    // current pointer names it. Take it back and lay it out here; returning early would
-    // leave the pane at the other folder's geometry.
-    if (current == targetWidget && current->isVisible() && current->parentWidget() == owner)
-    {
-        return;
     }
 
     if (current && current != targetWidget)
