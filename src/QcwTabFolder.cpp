@@ -3871,6 +3871,15 @@ int QcwTabFolderPrivate::computeTabsGeometry()
 
 void QcwTabFolderPrivate::computeWidgetGeometry()
 {
+    // A pane can be shared by several folders, and only the folder that parents it owns
+    // its geometry. A style change reaches hidden folders too, so a folder parked in a
+    // fast view would otherwise resize the pane another, visible folder is showing (to
+    // its own small page), leaving that view blank until the visible folder reclaims it.
+    if (!current || current->parentWidget() != owner)
+    {
+        return;
+    }
+
     auto r = pageRect();
 
     int reserved = 0;
@@ -4102,7 +4111,10 @@ void QcwTabFolderPrivate::showWidget(int index)
     }
 
     QWidget* targetWidget = widget ? widget : placeholder;
-    if (current == targetWidget && current->isVisible())
+    // A shared pane may still be parented to another folder even though this folder's
+    // current pointer names it. Take it back and lay it out here; returning early would
+    // leave the pane at the other folder's geometry.
+    if (current == targetWidget && current->isVisible() && current->parentWidget() == owner)
     {
         return;
     }
