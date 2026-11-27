@@ -1973,6 +1973,15 @@ void QcwTabFolder::showEvent(QShowEvent* event)
         impl->determineVisibleTabs();
     }
 
+    // A perspective switch shows a container whose folders were hidden. The current pane may
+    // still be parented to the folder of the perspective that was visible before; take it back
+    // before the page rectangle is applied, without moving keyboard focus.
+    if (impl->current && impl->current->parentWidget() != this)
+    {
+        impl->current->setParent(this);
+        impl->current->show();
+    }
+
     impl->computeWidgetGeometry();
     impl->updateOverlays();
 

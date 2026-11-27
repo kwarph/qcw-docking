@@ -103,6 +103,22 @@ int main(int argc, char* argv[])
     check(visiblePane.width() != 640 || visibleHost.width() == 640,
           "an already-current pane is relaid out to the folder's page");
 
+    // Switching back to a hidden perspective shows its folder again. The pane may still be
+    // parented to the folder of the perspective that was visible, so the show pass must take
+    // it back before laying it out.
+    visibleHost.hide();
+    app.processEvents();
+    visibleParked.setCurrentIndex(0);
+    visibleParked.show();
+    app.processEvents();
+    check(visiblePane.parentWidget() == &visibleParked, "the parked folder owns the pane while the host is hidden");
+
+    visibleHost.show();
+    app.processEvents();
+    check(visiblePane.parentWidget() == &visibleHost, "showing the host takes the shared pane back");
+    check(visiblePane.width() == visibleHost.width() || visiblePane.width() > visibleParked.width(),
+          "the show pass lays the reclaimed pane out at the host's size");
+
     if (failures == 0)
     {
         std::fprintf(stderr, "passed\n");
