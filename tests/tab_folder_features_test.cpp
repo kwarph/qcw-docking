@@ -11,6 +11,7 @@
 #include "QcwTabFolderRenderer.h"
 
 #include <QApplication>
+#include <QEvent>
 #include <QIcon>
 #include <QImage>
 #include <QMouseEvent>
@@ -428,6 +429,25 @@ void testTabListButtonCount()
           "the widest count stays inside the tab bar");
 }
 
+void testHostMinimumWidthSurvivesFontChange()
+{
+    QcwTabFolder folder;
+    folder.addTab(new QWidget, "Tab");
+    QApplication::processEvents();
+
+    const int tabBarMinimum = folder.minimumSizeHint().width();
+    const int hostMinimum = qMax(360, tabBarMinimum + 120);
+    folder.setMinimumWidth(hostMinimum);
+
+    // A font/style change recomputes the tab bar minimum. The host minimum is larger and must
+    // stay; before the fix the folder unconditionally lowered its minimum to the tab bar's.
+    QEvent fontChange { QEvent::FontChange };
+    QApplication::sendEvent(&folder, &fontChange);
+    QApplication::processEvents();
+
+    check(folder.minimumWidth() == hostMinimum, "a host minimum width survives a font/style change");
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -441,6 +461,7 @@ int main(int argc, char** argv)
     testTabListButtonCount();
     testFeatureTogglesButtons();
     testIconRecomputesCloseButton();
+    testHostMinimumWidthSurvivesFontChange();
 
     if (failures == 0)
     {

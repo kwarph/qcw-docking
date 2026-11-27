@@ -449,6 +449,8 @@ public:
     int lastVisibleIndex() const;
 
     void updateRecentIndexes(int indexToRemove);
+    /// Keeps the tab-bar minimum and a host-provided minimum apart; see the implementation.
+    void updateAutoMinimumWidth(int autoWidth);
     int computeMinTabBarWidth();
     void computeTabBarRect();
     int computeTabsGeometry();
@@ -493,6 +495,10 @@ public:
 
     QRect tabBarRect;
     QRect tabBarContentsRect;
+    /// The width this folder last derived from the tab bar; see updateAutoMinimumWidth().
+    int autoMinimumWidth { -1 };
+    /// An explicit minimum a host set (a fixed side column, for example), or 0.
+    int hostMinimumWidth { 0 };
     int iconSize { 16 };
     int minTextRectWidth { 120 };
     int freeSpace { 0 };
@@ -595,7 +601,8 @@ QcwTabFolder::QcwTabFolder(QWidget* parent) :
     impl->computeWidgetGeometry();
     impl->updateOverlays();
 
-    setMinimumSize(impl->computeMinTabBarWidth(), impl->tabBarRect.height() + impl->placeholder->minimumHeight());
+    impl->autoMinimumWidth = impl->computeMinTabBarWidth();
+    setMinimumSize(impl->autoMinimumWidth, impl->tabBarRect.height() + impl->placeholder->minimumHeight());
 
     // Promote this folder to the active one when focus moves into any of its
     // tab contents, so a view does not have to reach up and fake a tab-bar
@@ -2031,8 +2038,10 @@ void QcwTabFolder::changeEvent(QEvent* event)
 
         impl->computeTabBarRect();
         // The tab list button's widest count is measured in the current font, so the minimum
-        // width reserved for it has to be measured again as well.
-        setMinimumWidth(impl->computeMinTabBarWidth());
+        // width reserved for it has to be measured again as well. A host may have set a larger
+        // minimum (a fixed side column); that one belongs to the host and must not be lowered.
+        impl->updateAutoMinimumWidth(impl->computeMinTabBarWidth());
+        updateGeometry();
         impl->determineVisibleTabs();
         impl->computeWidgetGeometry();
         impl->updateOverlays();
@@ -3470,6 +3479,31 @@ void QcwTabFolderPrivate::updateRecentIndexes(int indexToRemove)
             --i;
         }
     }
+}
+
+void QcwTabFolderPrivate::updateAutoMinimumWidth(int autoWidth)
+{
+    const int current = owner->minimumWidth();
+
+    if (autoMinimumWidth < 0)
+    {
+        autoMinimumWidth = current;
+        hostMinimumWidth = 0;
+    }
+    else if (current != autoMinimumWidth)
+    {
+        // minimumWidth() no longer holds the value this folder derived from the tab bar, so a
+        // host set its own minimum (for example a perspective's 360 px side column). Remember
+        // it; a later font/renderer change must not lower it to the tab bar's smaller minimum.
+        hostMinimumWidth = current;
+    }
+
+    const int effective = qMax(hostMinimumWidth, autoWidth);
+    if (current != effective)
+    {
+        owner->setMinimumWidth(effective);
+    }
+    autoMinimumWidth = autoWidth;
 }
 
 int QcwTabFolderPrivate::computeMinTabBarWidth()
