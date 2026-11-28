@@ -189,6 +189,7 @@ public:
     QcwTabFolderPrivate* owner { nullptr };
     QWidget* widget { nullptr };
     QIcon icon;
+    QColor textColor;
     QString text;
     int fullTextWidth { 0 };
     int textWidth { 0 };
@@ -1118,6 +1119,27 @@ void QcwTabFolder::setTabIcon(int index, const QIcon& icon)
                 impl->determineVisibleTabs();
             }
             else
+            {
+                update(tab->rect);
+            }
+        }
+    }
+}
+
+QColor QcwTabFolder::tabTextColor(int index) const
+{
+    return impl->isValidIndex(index) ? impl->tabs[index]->textColor : QColor();
+}
+
+void QcwTabFolder::setTabTextColor(int index, const QColor& color)
+{
+    if (impl->isValidIndex(index))
+    {
+        auto tab = impl->tabs[index];
+        if (tab->textColor != color)
+        {
+            tab->textColor = color;
+            if (tab->visible)
             {
                 update(tab->rect);
             }
@@ -2305,6 +2327,7 @@ QcwTab::QcwTab(QWidget* w, const QString& text, const QIcon& icon, QcwTabFolderP
 QcwTab* QcwTab::clone(QcwTabFolderPrivate* parent) const
 {
     auto tab = new QcwTab(widget, text, icon, parent);
+    tab->textColor = textColor;
     tab->toolTip = toolTip;
     tab->data = data;
     tab->fullTextWidth = fullTextWidth;
@@ -2795,12 +2818,11 @@ void QcwTabFolderPrivate::createTabBarButtons()
         const auto addTabItem = [this, listWidget](int index, const QFont& itemFont)
         {
             auto tab = tabs[index];
-            // The dirty marker and color belong to the tab, not to the popup. The renderer
-            // decides the color (the QCW styled renderer uses blue for dirty text); an
-            // invalid color leaves the normal palette foreground.
-            const QColor dirtyColor =
-                tab->dirty ? renderer->tabTextColor(QcwTabFolderRenderer::Normal, true) : QColor();
-            auto item = listWidget->addItem(tab->text, tab->icon, itemFont, tab->dirty, dirtyColor);
+            // The popup mirrors the tab bar: the tab's explicit color wins, otherwise the
+            // renderer's default. The dirty state only adds the '*' marker, never a color.
+            const QColor textColor =
+                tab->textColor.isValid() ? tab->textColor : renderer->tabTextColor(QcwTabFolderRenderer::Normal);
+            auto item = listWidget->addItem(tab->text, tab->icon, itemFont, tab->dirty, textColor);
             item->setData(index, Qt::UserRole);
         };
 
@@ -3306,7 +3328,7 @@ void QcwTabFolderPrivate::paintTabs(QPainter& painter) const
 
         renderer->renderTab(painter, QcwTabFolderRenderer::TabState(state), tab->rect, closeBtnState, tab->closeRect,
                             tab->icon, tab->text, tab->textWidth, features.testFlag(qcw::ShowIcon),
-                            tab->textFullyDisplayed, showClose, tab->dirty);
+                            tab->textFullyDisplayed, showClose, tab->dirty, tab->textColor);
     }
 }
 
@@ -3343,7 +3365,7 @@ QPixmap QcwTabFolderPrivate::renderDragImage() const
 
     renderer->renderTab(painter, QcwTabFolderRenderer::TabState(state), dragPixmap.rect(), QcwTabFolderRenderer::Normal,
                         QRect(), tab->icon, tab->text, tab->textWidth, features.testFlag(qcw::ShowIcon),
-                        tab->textFullyDisplayed, false, tab->dirty);
+                        tab->textFullyDisplayed, false, tab->dirty, tab->textColor);
 
     painter.end();
 

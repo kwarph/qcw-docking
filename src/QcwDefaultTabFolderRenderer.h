@@ -17,8 +17,10 @@ QT_BEGIN_NAMESPACE
  * every query, so switching between light and dark themes takes effect on the
  * next repaint without re-creating the renderer.
  *
- * The three color accessors are virtual so a subclass can keep the layout of
- * the default renderer while changing only its palette.
+ * The color accessors are virtual so a subclass can keep the layout of the
+ * default renderer while changing only its palette. A tab's explicit color from
+ * QcwTabFolder::setTabTextColor() is applied by the base renderTab(); textColor()
+ * is the fallback used when the tab has none.
  */
 class QCWDOCK_EXPORT QcwDefaultTabFolderRenderer : public QcwTabFolderRenderer
 {
@@ -43,7 +45,7 @@ public:
 protected:
     void renderTabBarRegion(QPainter& painter, const QRect& tabBarRect, const QRect& selectedTabRect) const override;
     void renderTabRegion(QPainter& painter, TabState state, const QRect& tabRect) const override;
-    QColor textColor(TabState tabState, bool isDirty) const override;
+    QColor textColor(TabState tabState) const override;
 
     /// Color of the borders around and beneath the tabs.
     virtual QColor tabBorderColor() const;

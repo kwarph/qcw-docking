@@ -113,10 +113,9 @@ void StyledTabFolderRenderer::renderTabRegion(QPainter& painter, TabState state,
     painter.restore();
 }
 
-QColor StyledTabFolderRenderer::textColor(TabState tabState, bool isDirty) const
+QColor StyledTabFolderRenderer::textColor(TabState tabState) const
 {
     Q_UNUSED(tabState);
-    Q_UNUSED(isDirty);
 
     return QApplication::palette().color(QPalette::WindowText);
 }

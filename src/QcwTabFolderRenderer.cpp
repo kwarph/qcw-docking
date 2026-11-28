@@ -84,8 +84,8 @@ QIcon QcwTabFolderRenderer::renderMaximizeIcon(qcw::FolderState state) const
         return provider(restore ? IconKind::Restore : IconKind::Maximize);
     }
 
-    return QApplication::style()->standardIcon(restore ? QStyle::SP_TitleBarNormalButton
-                                                       : QStyle::SP_TitleBarMaxButton);
+    return QApplication::style()->standardIcon(restore ? QStyle::SP_TitleBarNormalButton :
+                                                         QStyle::SP_TitleBarMaxButton);
 }
 
 QIcon QcwTabFolderRenderer::renderMinimizeIcon() const
@@ -119,7 +119,8 @@ void QcwTabFolderRenderer::renderTab(QPainter& painter,
                                      bool showIcon,
                                      bool showWholeText,
                                      bool showClose,
-                                     bool isDirty) const
+                                     bool isDirty,
+                                     const QColor& explicitTextColor) const
 {
     // paint tab background, borders, etc.
     renderTabRegion(painter, state, tabRect);
@@ -152,7 +153,7 @@ void QcwTabFolderRenderer::renderTab(QPainter& painter,
         int y = tabRect.y() + (tabRect.height() - fm.height()) / 2;
         QRect r(x, y, textRectWidth, fm.height());
 
-        painter.setPen(textColor(state, isDirty));
+        painter.setPen(explicitTextColor.isValid() ? explicitTextColor : textColor(state));
         painter.setFont(f);
 
         auto textToPaint = isDirty ? QString("*%1").arg(text) : text;

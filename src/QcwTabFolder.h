@@ -5,6 +5,7 @@
 
 #include "QcwDockingTypes.h"
 #include "QcwDockingGlobal.h"
+#include <QColor>
 #include <QFrame>
 
 QT_BEGIN_NAMESPACE
@@ -399,6 +400,28 @@ public:
      * @param icon The new icon, drawn when the ShowIcon feature is enabled.
      */
     void setTabIcon(int index, const QIcon& icon);
+
+    /**
+     * @brief Gets the explicit text color of a tab.
+     * @param index The tab index.
+     * @return The color set through setTabTextColor(), or an invalid color when the tab
+     *         uses the renderer's default.
+     */
+    QColor tabTextColor(int index) const;
+
+    /**
+     * @brief Sets a per-tab text color that overrides the renderer's default.
+     * @param index The tab index. Ignored when out of range.
+     * @param color The color to draw the tab label in; an invalid color restores the
+     *              renderer's default for this tab.
+     * @details Like setTabIcon(), the value belongs to the tab: it follows reordering
+     *          and moves into another folder (takeTab()/detach), and the tab is repainted
+     *          immediately. It is deliberately not written by saveState(); transient
+     *          state such as version-control status is re-applied by the owner after a
+     *          restore. The renderer owns how the color is used; the folder only carries
+     *          it, so a theme can still change the selected/hovered background.
+     */
+    void setTabTextColor(int index, const QColor& color);
 
     /**
      * @brief Retrieves user data associated with a tab.

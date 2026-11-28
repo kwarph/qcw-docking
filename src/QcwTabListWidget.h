@@ -77,9 +77,10 @@ public:
      * @param dirty True to prefix the visible text with @c '*'.
      * @param textColor The foreground color for the row; invalid leaves the palette color.
      * @return The new item, owned by the internal model.
-     * @details The tab list uses this to carry the dirty state and the folder renderer's
-     *          dirty text color into the popup. The filter matches the displayed text,
-     *          including the marker.
+     * @details The tab list uses this to mirror the tab's color: its explicit
+     *          QcwTabFolder::setTabTextColor() value, or the renderer's default when the
+     *          tab has none. The dirty state only adds the marker, never a color. The
+     *          filter matches the displayed text, including the marker.
      */
     QStandardItem*
     addItem(const QString& text, const QIcon& icon, const QFont& font, bool dirty, const QColor& textColor);

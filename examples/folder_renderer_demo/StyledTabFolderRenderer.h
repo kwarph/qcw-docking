@@ -24,7 +24,7 @@ public:
 protected:
     void renderTabBarRegion(QPainter& painter, const QRect& rect, const QRect& selectedTabRect) const override;
     void renderTabRegion(QPainter& painter, TabState state, const QRect& rect) const override;
-    QColor textColor(TabState tabState, bool isDirty) const override;
+    QColor textColor(TabState tabState) const override;
 
     int mTabBarSpacing { 0 };
     QMargins mTabBarPadding;

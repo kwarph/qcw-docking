@@ -34,6 +34,10 @@ qt_add_executable(tab_folder_shared_pane_test
     tab_folder_shared_pane_test.cpp
 )
 
+qt_add_executable(tab_folder_text_color_test
+    tab_folder_text_color_test.cpp
+)
+
 foreach(target IN ITEMS
     docking_drag_drop_test
     folder_maximize_test
@@ -44,6 +48,7 @@ foreach(target IN ITEMS
     tab_folder_right_widget_test
     tab_list_widget_test
     tab_folder_shared_pane_test
+    tab_folder_text_color_test
 )
     target_link_libraries(${target} PRIVATE
         qcwdocking

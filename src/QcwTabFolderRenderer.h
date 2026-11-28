@@ -209,6 +209,8 @@ public:
      * @param showWholeText When false the label is elided to fit textRectWidth.
      * @param showClose Whether to draw the close button.
      * @param isDirty Whether the tab content has unsaved changes (prefixes "*").
+     * @param explicitTextColor The tab's color set through QcwTabFolder::setTabTextColor();
+     *        an invalid color selects textColor() for the tab state.
      */
     void renderTab(QPainter& painter,
                    TabState state,
@@ -221,7 +223,8 @@ public:
                    bool showIcon,
                    bool showWholeText,
                    bool showClose,
-                   bool isDirty) const;
+                   bool isDirty,
+                   const QColor& explicitTextColor = QColor()) const;
 
     /**
      * @brief Renders the tab bar background and the drag-and-drop indicator.
@@ -238,15 +241,14 @@ public:
                       int xPosOfDropIndicator = -1) const;
 
     /**
-     * @brief Returns the color a tab label would be painted with.
-     * @param tabState The interaction state of the tab.
-     * @param isDirty Whether the tab has unsaved changes.
+     * @brief Returns the default color of a tab label in @p tabState.
      * @details Public read-only view of textColor() so non-painting surfaces, such as the
-     *          tab list popup, can show the same dirty/normal text color as the tab bar.
+     *          tab list popup, can show the same color as a tab that carries no explicit
+     *          color. A tab's own color always wins; see QcwTabFolder::tabTextColor().
      */
-    QColor tabTextColor(TabState tabState, bool isDirty) const
+    QColor tabTextColor(TabState tabState) const
     {
-        return textColor(tabState, isDirty);
+        return textColor(tabState);
     }
 
 protected:
@@ -279,11 +281,14 @@ protected:
     virtual void renderCloseButton(QPainter& painter, TabState closeButtonState, const QRect& closeButtonRect) const;
 
     /**
-     * @brief Returns the color to draw a tab's label in.
+     * @brief Returns the default color to draw a tab's label in.
      * @param tabState The interaction state of the tab.
-     * @param isDirty Whether the tab has unsaved changes.
+     * @details Called only when QcwTabFolder::setTabTextColor() did not give the tab an
+     *          explicit color. The unsaved-changes state is deliberately not an argument:
+     *          a dirty tab is marked by the '*' prefix, and its color is the owner's
+     *          choice through the folder, not a renderer policy.
      */
-    virtual QColor textColor(TabState tabState, bool isDirty) const = 0;
+    virtual QColor textColor(TabState tabState) const = 0;
 
     /**
      * @brief Determines whether the current system theme is light.

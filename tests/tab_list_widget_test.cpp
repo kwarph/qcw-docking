@@ -179,6 +179,10 @@ void testPopupStaysInsideScreen()
     folder.addTab(new QWidget, QStringLiteral("Another very long tab title for the list"));
     folder.addTab(new QWidget, QStringLiteral("Third very long tab title for the list"));
     folder.setTabDirty(1, true);
+    const QColor explicitTabColor { 0x00, 0x80, 0x00 };
+    folder.setTabTextColor(1, explicitTabColor);
+    check(folder.tabTextColor(1) == explicitTabColor, "setTabTextColor stores the explicit color");
+    check(!folder.tabTextColor(0).isValid(), "a tab without an explicit color reports an invalid color");
     folder.move(available.right() - folder.width() + 1, available.top() + 40);
     folder.show();
     QApplication::processEvents();
@@ -212,7 +216,7 @@ void testPopupStaysInsideScreen()
     check(view != nullptr, "the popup exposes its list view");
     if (view)
     {
-        const QColor expectedDirtyColor = folder.renderer()->tabTextColor(QcwTabFolderRenderer::Normal, true);
+        const QColor expectedDirtyColor = folder.tabTextColor(1);
         bool foundDirty = false;
         bool dirtyHasColor = false;
         for (int row = 0; row < view->model()->rowCount(); ++row)
@@ -226,7 +230,7 @@ void testPopupStaysInsideScreen()
             }
         }
         check(foundDirty, "the popup item shows the dirty marker");
-        check(dirtyHasColor, "the popup item uses the renderer's dirty text color");
+        check(dirtyHasColor, "the popup item uses the tab's explicit text color");
     }
 
     popup->close();
